@@ -1,0 +1,60 @@
+# 陳昭銘 3D 作品集網站
+
+互動式 3D 作品集：捲動頁面時，鏡頭會沿著編排好的運鏡在 8 件作品之間無縫移動，
+每件作品都可以拖曳旋轉、切換「上色 / 白模 / 線框」，最後是環形藝廊、服務項目與聯絡方式。
+
+## 特效一覽
+
+| 效果 | 觸發方式 | 程式位置 |
+| --- | --- | --- |
+| 鏡頭扭曲、色散、放射殘影、FOV 衝刺 | 在作品之間飛行、快速捲動時 | `site/js/fx.js` 的 `createWarpPass` |
+| 掃描式材質切換（線框 ⇄ 上色 ⇄ 白模） | 抵達作品、切換檢視模式時 | `site/js/main.js` 的 `scanTo` |
+| 爆炸拆解圖 | 捲到「拆解」鏡頭，或按 `X` / 點「拆解」 | 鏡位的 `x` 值；作品的 `explode` 是拆開幅度 |
+| 滑鼠水波、故障切片 | 移動滑鼠、切換模式時 | `createWarpPass` |
+| 藝廊圖片彎曲、漣漪、色散 | 在藝廊捲動、滑鼠移到圖片上 | `fx.js` 的 `galleryMaterial` |
+| 跑馬燈大字、逐字進場、亂碼解碼、自訂游標 | 隨捲動 | `fx.js` 與 `site/css/style.css` 的 v2 區塊 |
+
+系統設定開啟「減少動態效果」的訪客會自動看到沒有扭曲的版本。
+
+## 資料夾
+
+| 路徑 | 用途 |
+| --- | --- |
+| `site/` | **網站本體**，上線時只需要上傳這個資料夾 |
+| `site/js/data.js` | 所有文字、作品順序、鏡位、藝廊圖片——改內容改這裡 |
+| `site/js/main.js` | 3D 場景、運鏡、互動程式 |
+| `site/js/fx.js` | 後製扭曲、天空、藝廊材質、游標、文字動態 |
+| `site/models/*.glb` | 由 Blender 轉出的網頁用模型（含 Draco 壓縮與拓撲線框） |
+| `site/img/*.jpg` | 藝廊圖片（從作品集 PDF 與 `素材/作品集沒有的圖` 轉出） |
+| `tools/build_models.py` | Blender 轉檔腳本：上材質、歸一化、減面、匯出 GLB |
+| `serve.py`、`預覽網站.bat` | 本機預覽用 |
+
+## 本機預覽
+
+雙擊 `預覽網站.bat`，瀏覽器會開啟 <http://localhost:5173>。
+（直接雙擊 `index.html` 無法運作，瀏覽器不允許從檔案系統載入 3D 模組。）
+
+需要網路：three.js、Draco 解碼器與字型是從 CDN 載入的。
+
+## 修改內容
+
+- **文字 / 聯絡方式 / 得獎紀錄**：`site/js/data.js` 最上方的 `PROFILE`、以及 `WORKS`、`SERVICES`、`AWARDS`。
+- **鏡位**：每件作品的 `shots`。`az` 水平角、`el` 仰角、`d` 距離、`f` 對焦點、`side` 模型在畫面左右、`mode` 該鏡頭的顯示模式、`x` 爆炸拆解程度（0–1）。
+- **藝廊圖片**：把 JPG 放進 `site/img/`，在 `GALLERY.items` 加一筆（`w`、`h` 填圖片的像素尺寸）。
+
+## 重新轉出模型
+
+原始模型沒有貼圖，顏色是轉檔腳本依部件名稱指定的（`tools/build_models.py` 裡的 `PAL` 色票與各個 `color_*` 函式）。
+換了模型或想調顏色後，在專案資料夾執行（PowerShell）：
+
+```powershell
+& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" -b --factory-startup --python tools\build_models.py -- 素材 site\models
+```
+
+只想重轉其中幾個，在最後加上 key，例如 `ship char`
+（可用的 key：`ship char console pod arcade jukebox airship venom`）。
+
+## 上線
+
+`site/` 是純靜態網站，沒有後端。把整個 `site` 資料夾上傳到任何靜態主機即可，例如
+Netlify（拖曳資料夾上傳）、Cloudflare Pages、GitHub Pages 或一般虛擬主機。

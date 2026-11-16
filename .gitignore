@@ -1,0 +1,16 @@
+﻿# Portable Git install (not project content)
+/Git/
+
+# 原始素材與作品集 PDF 不上傳（檔案大，且是未公開的原始模型檔）
+/素材/
+*.pdf
+
+# 本機工具設定
+/.claude/
+
+# Python / OS junk
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+desktop.ini
