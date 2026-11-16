@@ -54,7 +54,22 @@
 只想重轉其中幾個，在最後加上 key，例如 `ship char`
 （可用的 key：`ship char console pod arcade jukebox airship venom`）。
 
-## 上線
+## 線上版本（GitHub Pages）
+
+- 預覽網址：<https://raw-air.github.io/chaoming-3d-portfolio/>
+- 原始碼：<https://github.com/Raw-air/chaoming-3d-portfolio>（`main` 分支是整個專案，`gh-pages` 分支只有 `site/` 的內容）
+
+改完網站後，更新線上版本的步驟（在專案資料夾的 Git Bash 執行）：
+
+```bash
+git add -A && git commit -m "更新網站"
+git push
+git subtree push --prefix site origin gh-pages
+```
+
+推送後約一分鐘生效。`素材/` 與作品集 PDF 已列在 `.gitignore`，不會被上傳。
+
+## 上線到其他主機
 
 `site/` 是純靜態網站，沒有後端。把整個 `site` 資料夾上傳到任何靜態主機即可，例如
 Netlify（拖曳資料夾上傳）、Cloudflare Pages、GitHub Pages 或一般虛擬主機。
