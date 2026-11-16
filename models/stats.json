@@ -1,0 +1,196 @@
+{
+ "ship": {
+  "file": "飛船 重拆.obj",
+  "objects": 27,
+  "tris": 70446,
+  "verts": 36232,
+  "materials": 18,
+  "dims": [
+   7.106,
+   5.461,
+   1.537
+  ],
+  "norm_dims": [
+   1.0,
+   0.7684,
+   0.2163
+  ],
+  "spin": [
+   {
+    "name": "SPIN0",
+    "center": [
+     0.3755,
+     -0.1457,
+     0.1018
+    ],
+    "size": [
+     0.1791,
+     0.0185,
+     0.2036
+    ]
+   },
+   {
+    "name": "SPIN1",
+    "center": [
+     -0.3755,
+     -0.1457,
+     0.1018
+    ],
+    "size": [
+     0.1791,
+     0.0185,
+     0.2036
+    ]
+   }
+  ],
+  "web_tris": 70446,
+  "wire_edges": 70559,
+  "bytes": 1325048
+ },
+ "char": {
+  "file": "大專  男主 服裝.fbx",
+  "objects": 24,
+  "tris": 52698,
+  "verts": 26628,
+  "materials": 23,
+  "dims": [
+   0.545,
+   0.16,
+   0.774
+  ],
+  "norm_dims": [
+   0.7049,
+   0.2067,
+   1.0
+  ],
+  "spin": [],
+  "web_tris": 52698,
+  "wire_edges": 57806,
+  "bytes": 933808
+ },
+ "console": {
+  "file": "操控台.fbx",
+  "objects": 12,
+  "tris": 2276,
+  "verts": 1173,
+  "materials": 1,
+  "dims": [
+   1.769,
+   1.478,
+   4.686
+  ],
+  "norm_dims": [
+   0.3775,
+   0.3153,
+   1.0
+  ],
+  "spin": [],
+  "web_tris": 2276,
+  "wire_edges": 2266,
+  "bytes": 55772
+ },
+ "pod": {
+  "file": "生物倉.fbx",
+  "objects": 7,
+  "tris": 8386,
+  "verts": 4241,
+  "materials": 2,
+  "dims": [
+   0.81,
+   0.689,
+   1.873
+  ],
+  "norm_dims": [
+   0.4321,
+   0.368,
+   1.0
+  ],
+  "spin": [],
+  "web_tris": 8386,
+  "wire_edges": 8436,
+  "bytes": 168296
+ },
+ "arcade": {
+  "file": "遊戲機.fbx",
+  "objects": 12,
+  "tris": 8844,
+  "verts": 4587,
+  "materials": 2,
+  "dims": [
+   1.879,
+   2.424,
+   5.112
+  ],
+  "norm_dims": [
+   0.3675,
+   0.4742,
+   1.0
+  ],
+  "spin": [],
+  "web_tris": 8844,
+  "wire_edges": 8920,
+  "bytes": 174176
+ },
+ "jukebox": {
+  "file": "點唱機.fbx",
+  "objects": 12,
+  "tris": 7896,
+  "verts": 4276,
+  "materials": 3,
+  "dims": [
+   0.405,
+   0.356,
+   0.727
+  ],
+  "norm_dims": [
+   0.5567,
+   0.4896,
+   1.0
+  ],
+  "spin": [],
+  "web_tris": 7896,
+  "wire_edges": 8251,
+  "bytes": 174004
+ },
+ "airship": {
+  "file": "飛船.fbx",
+  "objects": 255,
+  "tris": 334440,
+  "verts": 167834,
+  "materials": 97,
+  "dims": [
+   1.292,
+   3.012,
+   2.476
+  ],
+  "norm_dims": [
+   0.429,
+   1.0,
+   0.822
+  ],
+  "spin": [],
+  "web_tris": 177648,
+  "wire_edges": 188745,
+  "bytes": 3925684
+ },
+ "venom": {
+  "file": "猛毒雕刻.fbx",
+  "objects": 3,
+  "tris": 1712975,
+  "verts": 856667,
+  "materials": 1,
+  "dims": [
+   4.453,
+   4.571,
+   5.155
+  ],
+  "norm_dims": [
+   0.8639,
+   0.8866,
+   1.0
+  ],
+  "spin": [],
+  "web_tris": 176763,
+  "bytes": 451232
+ }
+}
