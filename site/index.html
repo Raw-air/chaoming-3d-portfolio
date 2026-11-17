@@ -4,79 +4,121 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>陳昭銘 CHEN CHAO MING — 3D 建模作品集</title>
-<meta name="description" content="陳昭銘的互動式 3D 作品集：角色、載具、場景道具與數位雕刻。每個模型都能在網頁上旋轉、拆解、切成線框檢查。">
-<meta name="theme-color" content="#06070b">
+<meta name="description" content="陳昭銘的 3D 建模作品集：角色、硬表面載具、場景道具與數位雕刻。每件作品附完成渲染、白模、線框與 360° 轉台。">
+<meta name="theme-color" content="#121212">
+<script>document.documentElement.classList.add('js');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700;900&family=Unbounded:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-} }
-</script>
 </head>
-<body>
-<canvas id="stage" aria-label="互動式 3D 作品展示"></canvas>
-<div class="vignette" aria-hidden="true"></div>
+<body class="page-home">
+<a class="skip" href="#works">跳到作品</a>
 
-<!-- 載入畫面 -->
-<div id="loader">
-  <div class="loader-inner">
-    <div class="loader-count" id="loader-pct">000</div>
-    <div class="loader-name">CHEN CHAO MING — 3D MODELING</div>
-    <div class="loader-bar"><i id="loader-fill"></i></div>
-    <div class="loader-meta"><span id="loader-text">載入 8 個模型 · 219 萬個三角面</span><span>LOADING</span></div>
+<header id="nav" class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top" aria-label="陳昭銘 CHEN CHAO MING，回到頂端"><b>陳昭銘</b><span>CHEN CHAO MING</span></a>
+    <nav id="nav-menu" class="nav-menu" aria-label="主要導覽">
+      <a href="#works">作品</a>
+      <a href="#gallery">藝廊</a>
+      <a href="#about">關於</a>
+      <a href="#contact">聯絡</a>
+      <a class="btn btn-solid nav-cta" href="#contact">開始委託</a>
+    </nav>
+    <button id="nav-toggle" class="nav-toggle" aria-label="開啟選單" aria-expanded="false" aria-controls="nav-menu"><i></i><i></i></button>
   </div>
-</div>
-
-<!-- 頂部導覽 -->
-<header id="topbar">
-  <a class="brand" href="#top" data-jump="0"><b>陳昭銘</b><span>3D ARTIST</span></a>
-  <nav>
-    <a href="#works" data-jump="works">作品</a>
-    <a href="#gallery" data-jump="gallery">藝廊</a>
-    <a href="#about" data-jump="about">服務</a>
-    <a class="cta" href="#contact" data-jump="contact">開始委託</a>
-  </nav>
 </header>
 
-<div id="progress" aria-hidden="true"><i></i></div>
+<main id="top">
+  <!-- 主視覺 -->
+  <section class="hero" id="hero" aria-label="主視覺"></section>
 
-<!-- 左側章節軌道 -->
-<aside id="rail" aria-label="章節"></aside>
+  <!-- 簡介數字 -->
+  <section class="intro wrap" aria-label="簡介">
+    <p class="intro-lead" id="intro-lead" data-reveal></p>
+    <dl class="figures" id="figures"></dl>
+  </section>
 
-<!-- 目前作品資訊 + 檢視模式 -->
-<div id="hud">
-  <div id="hud-work"><span id="hud-no">01</span><span id="hud-sep">/</span><span id="hud-total">08</span><b id="hud-title">飛行艇</b></div>
-  <div id="modes" role="group" aria-label="檢視模式">
-    <button data-mode="auto" class="on">自動</button>
-    <button data-mode="shaded">上色</button>
-    <button data-mode="clay">白模</button>
-    <button data-mode="wire">線框</button>
-    <span class="sep"></span>
-    <button id="explode" title="爆炸拆解圖（快捷鍵 X）">拆解</button>
+  <!-- 作品 -->
+  <section class="section" id="works" aria-labelledby="works-h">
+    <div class="wrap">
+      <header class="sec-head" data-reveal>
+        <span class="label">SELECTED WORK — 08</span>
+        <h2 id="works-h" class="h-display">作品</h2>
+      </header>
+      <div class="works" id="works-grid"></div>
+    </div>
+  </section>
+
+  <!-- 白模 / 線框 對照 -->
+  <section class="section section-tight compare-band" id="compare" aria-labelledby="compare-h">
+    <div class="wrap">
+      <div class="split-head" data-reveal>
+        <div>
+          <span class="label">FINAL / CLAY / WIRE</span>
+          <h2 id="compare-h" class="h-2">拿掉材質，<br>造型還在。</h2>
+        </div>
+        <p class="muted" id="compare-note"></p>
+      </div>
+      <div id="compare-box" data-reveal></div>
+    </div>
+  </section>
+
+  <!-- 藝廊 -->
+  <section class="section" id="gallery" aria-labelledby="gallery-h">
+    <div class="wrap">
+      <header class="sec-head" data-reveal>
+        <span class="label">STILLS &amp; FILM — 18</span>
+        <h2 id="gallery-h" class="h-display">藝廊</h2>
+        <p class="muted sec-sub">動畫劇照、場景與材質練習。點圖放大。</p>
+      </header>
+      <div class="jg" id="gallery-grid"></div>
+    </div>
+  </section>
+
+  <!-- 關於（淺色編輯帶） -->
+  <section class="section light" id="about" aria-labelledby="about-h">
+    <div class="wrap">
+      <div class="about-top">
+        <header data-reveal>
+          <span class="label">ABOUT</span>
+          <h2 id="about-h" class="h-display">關於</h2>
+        </header>
+        <div class="bio" id="bio" data-reveal></div>
+      </div>
+
+      <div class="block" data-reveal>
+        <h3 class="block-h"><span class="label">SERVICES</span>服務項目</h3>
+        <ul class="services" id="services"></ul>
+      </div>
+
+      <div class="block" data-reveal>
+        <h3 class="block-h"><span class="label">PROCESS</span>合作流程</h3>
+        <ol class="process" id="process"></ol>
+      </div>
+
+      <div class="block" data-reveal>
+        <h3 class="block-h"><span class="label">AWARDS</span>獲獎與參展</h3>
+        <ul class="awards" id="awards"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 聯絡 -->
+  <section class="section contact" id="contact" aria-labelledby="contact-h">
+    <div class="wrap" id="contact-in"></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-in">
+    <span class="brand brand-sm"><b>陳昭銘</b><span>CHEN CHAO MING</span></span>
+    <span class="muted">© <span id="year">2026</span> 陳昭銘 · 3D 建模作品集</span>
+    <a class="link" href="#top">回到頂端 ↑</a>
   </div>
-  <div id="hint"><i class="ico-drag"></i>拖曳旋轉　·　捲動前進　·　X 拆解</div>
-</div>
+</footer>
 
-<!-- 文字面板（由 JS 依運鏡腳本產生） -->
-<main id="panels"></main>
-
-<!-- 圖片燈箱 -->
-<div id="lightbox" hidden>
-  <button id="lb-close" aria-label="關閉">×</button>
-  <figure>
-    <img id="lb-img" alt="">
-    <figcaption><b id="lb-title"></b><span id="lb-note"></span><div id="lb-alts"></div></figcaption>
-  </figure>
-</div>
-
-<!-- 捲動長度（實際內容為 fixed 面板） -->
-<div id="scroll-space"></div>
-
-<noscript><p class="nojs">這個作品集需要啟用 JavaScript 才能瀏覽 3D 內容。聯絡信箱：jerry216066@gmail.com</p></noscript>
-<script type="module" src="js/main.js"></script>
+<noscript><p class="nojs">這個作品集需要啟用 JavaScript 才能顯示。聯絡信箱：<a href="mailto:jerry216066@gmail.com">jerry216066@gmail.com</a></p></noscript>
+<script type="module" src="js/home.js"></script>
 </body>
 </html>
