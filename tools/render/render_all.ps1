@@ -1,7 +1,8 @@
-# 依序輸出正式渲染圖（低優先權，一次只跑一個 Blender，避免拖垮 4 核 / 8 GB 的機器）。
-# 用法：
-#   powershell -File tools\render\render_all.ps1                       # 全部八件作品
-#   powershell -File tools\render\render_all.ps1 -Keys ship,pod        # 指定作品
+# Final renders, one Blender at a time at BelowNormal priority (4 cores / 8 GB machine).
+# Keep this file ASCII-only: Windows PowerShell 5.1 reads BOM-less scripts as ANSI.
+# Usage:
+#   powershell -File tools\render\render_all.ps1                       # all eight works
+#   powershell -File tools\render\render_all.ps1 -Keys ship,pod        # some works
 #   powershell -File tools\render\render_all.ps1 -Keys ship -Stills card,s2 -NoHero -NoTurn
 param(
   [string[]]$Keys = @("ship", "console", "char", "pod", "arcade", "jukebox", "airship", "venom"),
@@ -13,11 +14,14 @@ param(
   [switch]$NoTurn,
   [string]$Log = ""
 )
+# "powershell -File" passes a,b as one string, so split it here
+$Keys = @($Keys | ForEach-Object { $_ -split "," } | Where-Object { $_ })
+$Stills = @($Stills | ForEach-Object { $_ -split "," } | Where-Object { $_ })
 $blender = "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 if (-not $Log) { $Log = Join-Path $root "tools\render\render_all.log" }
-# 子行程會繼承 BelowNormal
+# child processes inherit BelowNormal
 (Get-Process -Id $PID).PriorityClass = "BelowNormal"
 
 function Pass([string]$key, [string[]]$extra) {
@@ -30,6 +34,7 @@ function Pass([string]$key, [string[]]$extra) {
   "PASS $key $($extra -join ' ') : $([int]((Get-Date) - $t).TotalSeconds)s exit=$LASTEXITCODE" | Tee-Object -FilePath $Log -Append
 }
 
+"START $($Keys -join ' ') $(Get-Date -Format s)" | Tee-Object -FilePath $Log -Append
 foreach ($k in $Keys) {
   if (-not $NoHero) { Pass $k @("--only", "hero", "--samples", "$HeroSamples") }
   if ($Stills.Count) { Pass $k @("--only", ($Stills -join ","), "--samples", "$StillSamples") }

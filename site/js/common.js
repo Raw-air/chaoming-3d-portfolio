@@ -9,10 +9,11 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 /* ------------------------------------------------------------------ 圖片＋占位
    每張圖都包在固定比例的 .media 裡：先顯示深色占位（作品名），圖片載入成功才淡入；
    失敗就保持占位（有 data-fallback 的會先試備用圖）。不會出現破圖示，也不會跳版。 */
-export function media({ src, alt = '', ratio = '16 / 9', label = '', sub = '', cls = '', eager = false, fallback = '', extra = '' }) {
+export function media({ src, alt = '', ratio = '16 / 9', label = '', sub = '', cls = '', eager = false, fallback = '', extra = '', pos = '' }) {
+  // pos：裁切時要保留的焦點（object-position，例如 '70% 40%'），主體不在畫面中央的圖才需要
   return `<div class="media ${cls}"${ratio ? ` style="--ratio:${ratio}"` : ''}>
     <div class="ph" aria-hidden="true"><span class="ph-sub">${esc(sub)}</span><span class="ph-t">${esc(label)}</span></div>
-    <img src="${esc(src)}" alt="${esc(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"${fallback ? ` data-fallback="${esc(fallback)}"` : ''}>${extra}
+    <img src="${esc(src)}" alt="${esc(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"${fallback ? ` data-fallback="${esc(fallback)}"` : ''}${pos ? ` style="object-position:${esc(pos)}"` : ''}>${extra}
   </div>`;
 }
 
@@ -220,6 +221,7 @@ export function initCompare(root) {
   box.addEventListener('pointermove', (e) => { if (drag) fromEvent(e); });
   const end = () => { drag = false; box.classList.remove('dragging'); };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  box.addEventListener('dragstart', (e) => e.preventDefault());   // 否則瀏覽器會改成「拖曳圖片」，滑桿只動一下就被取消
   handle.addEventListener('keydown', (e) => {
     const k = { ArrowLeft: -5, ArrowRight: 5, Home: -100, End: 100 }[e.key];
     if (k !== undefined) { e.preventDefault(); set(pos + k); }

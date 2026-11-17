@@ -27,7 +27,9 @@
 | `site/renders/<key>/` | 作品渲染圖（由 Blender 產生，見下方） |
 | `site/models/*.glb` | 由 Blender 轉出的網頁用模型（含 Draco 壓縮與拓撲線框），`stats.json` 是面數等規格 |
 | `site/img/*.jpg` | 藝廊圖片（從作品集 PDF 與 `素材/作品集沒有的圖` 轉出） |
-| `tools/build_models.py` | Blender 轉檔腳本：上材質、歸一化、減面、匯出 GLB |
+| `tools/build_models.py`、`tools/modellib.py` | Blender 轉檔腳本：上材質、歸一化、減面、匯出 GLB |
+| `tools/render/` | 作品渲染：`scene_<key>.py` 是每件作品的布景、材質與鏡頭，`common.py` 是共用工具，`render_all.ps1` 依序輸出正式圖（細節見 `tools/render/README.md`） |
+| `tools/shot.mjs` | 用無頭瀏覽器幫網站截圖、測試拖曳（不必開視窗就能檢查版面） |
 | `serve.py`、`預覽網站.bat` | 本機預覽用 |
 
 ## 作品渲染圖
@@ -46,6 +48,18 @@
 還沒產生的圖會顯示成深色的占位區塊（寫著作品名），版面不會跳動；
 飛行艇、男主角、熱氣球飛船在主視覺缺圖時會先用動畫劇照代替（`content.js` 的 `still`）。
 
+### 重新渲染
+
+每件作品的布景都是 Blender 腳本（`tools/render/scene_<key>.py`），改完後在專案資料夾執行（PowerShell）：
+
+```powershell
+# 先用草稿看結果（640×360，一張約半分鐘），輸出到別的資料夾，不會蓋掉正式圖
+& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" -b --factory-startup --python tools\render\scene_ship.py -- --quality draft --only hero,s1 --out D:\temp\ship
+# 正式輸出到 site\renders\：一次一個 Blender、低優先權，一件作品約 40 分鐘（這台電腦只能用 CPU 算）
+powershell -ExecutionPolicy Bypass -File tools\render\render_all.ps1 -Keys ship
+powershell -ExecutionPolicy Bypass -File tools\render\render_all.ps1 -Keys console -Stills s1,s2 -NoHero -NoTurn   # 只重算幾張
+```
+
 ## 本機預覽
 
 雙擊 `預覽網站.bat`，瀏覽器會開啟 <http://localhost:5173>。
@@ -59,7 +73,19 @@
 - **電話**：`PROFILE.phone` 預設空白不顯示，填入後聯絡區會多一個撥號按鈕。
 - **首頁主視覺 / 對照帶用哪件作品**：`content.js` 的 `HOME`。
 - **藝廊圖片**：把 JPG 放進 `site/img/`，在 `GALLERY` 加一筆（`w`、`h` 填圖片的像素尺寸）。
-- **作品圖說**：寫在 `renders/<key>/shots.json`；沒有的話用 `content.js` 的 `SHOT_CAPTIONS`。
+- **作品圖說**：寫在 `renders/<key>/shots.json`（由渲染腳本產生，要改請改 `scene_<key>.py` 裡的說明文字）；沒有的話用 `content.js` 的 `SHOT_CAPTIONS`。
+
+## 檢查版面
+
+改完樣式或程式後，可以不開瀏覽器視窗直接截圖檢查（需要先啟動本機預覽）：
+
+```powershell
+D:\Nodejs\node.exe tools\shot.mjs "http://localhost:5173/work.html?id=ship" --tiles D:\temp\ship           # 桌機寬度，整頁分段截圖
+D:\Nodejs\node.exe tools\shot.mjs "http://localhost:5173/" --w 390 --h 800 --mobile --tiles D:\temp\home   # 手機寬度
+```
+
+指令最後會列出載入失敗的檔案與主控台錯誤；拖曳、點擊、按鍵等操作的寫法見 `tools/shot.mjs` 開頭的說明。
+
 ## 重新轉出模型
 
 原始模型沒有貼圖，顏色是轉檔腳本依部件名稱指定的（`tools/build_models.py` 裡的 `PAL` 色票與各個 `color_*` 函式）。
@@ -77,15 +103,17 @@
 - 預覽網址：<https://raw-air.github.io/chaoming-3d-portfolio/>
 - 原始碼：<https://github.com/Raw-air/chaoming-3d-portfolio>（`main` 分支是整個專案，`gh-pages` 分支只有 `site/` 的內容）
 
-改完網站後，更新線上版本的步驟（在專案資料夾的 Git Bash 執行）：
+改完網站後，更新線上版本的步驟（在專案資料夾的 PowerShell 執行；這台電腦用的是資料夾裡的可攜版 Git）：
 
-```bash
-git add -A && git commit -m "更新網站"
-git push
-git subtree push --prefix site origin gh-pages
+```powershell
+.\Git\bin\git.exe add -A
+.\Git\bin\git.exe commit -m "更新網站"
+.\Git\bin\git.exe push
+.\Git\bin\git.exe subtree push --prefix site origin gh-pages
 ```
 
-推送後約一分鐘生效。`素材/` 與作品集 PDF 已列在 `.gitignore`，不會被上傳。
+第一次推送會跳出 GitHub 登入視窗，登入後就會記住。推送後約一分鐘生效。
+`素材/` 與作品集 PDF 已列在 `.gitignore`，不會被上傳。
 
 ## 上線到其他主機
 

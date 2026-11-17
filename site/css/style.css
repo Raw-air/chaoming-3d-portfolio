@@ -225,7 +225,7 @@ html.js [data-reveal].in { opacity: 1; transform: none; }
 .cmp { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--ph); touch-action: pan-y; cursor: ew-resize; -webkit-user-select: none; user-select: none; }
 .cmp-layer { position: absolute; inset: 0; }
 .cmp .media { position: absolute; inset: 0; aspect-ratio: auto; }
-.cmp .media img { transition: opacity .6s ease; }
+.cmp .media img { transition: opacity .6s ease; -webkit-user-drag: none; }
 .cmp-top { clip-path: inset(0 0 0 var(--pos)); }
 .cmp-base .ph { padding-right: 50%; }
 .cmp-top .ph { padding-left: 50%; }
@@ -445,6 +445,7 @@ html.js [data-reveal].in { opacity: 1; transform: none; }
   .pn { grid-template-columns: 1fr; }
   .pn-next .pn-txt { text-align: left; }
   .viewer { aspect-ratio: 4 / 5; }
+  .viewer-canvas { bottom: 112px; }           /* 控制列會換成兩排，留位置給它，不要蓋住模型 */
   .cmp { aspect-ratio: 4 / 3; }
 }
 @media (max-width: 639px) {

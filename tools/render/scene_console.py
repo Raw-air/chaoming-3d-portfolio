@@ -203,7 +203,7 @@ red = model.by_name("平面.031")
 rm_, nt, out = C.new_mat("con_red_oneside")
 bf = C.N(nt, "NewGeometry").outputs["Backfacing"]
 C.principled(nt, out, color="#200404", rough=0.3, emit=C.col("#ff2a1f"),
-             emit_strength=C.mathn(nt, "MULTIPLY", C.mathn(nt, "SUBTRACT", 1.0, bf), 7.0))
+             emit_strength=C.mathn(nt, "MULTIPLY", C.mathn(nt, "SUBTRACT", 1.0, bf), 1.5))   # 7.0 blew out to pink-white
 rm_["recipe"] = "emissive"
 red.data.materials[0] = rm_
 assign_faces(red, faces_where(red, SCREEN_N, 0.0, 0.8), C.material("emissive", "con_red_strip", color="#ff2b22",
@@ -534,34 +534,46 @@ SKY_Y = 16.0
 storm_sky("sky", (0, SKY_Y, 5.0), (70, 40), flash=(2.5, 7.0), strength=0.8)
 
 
-def bolt(name, start, length, seed, segs=14, spread=0.9, radius=0.05, branches=2):
+def bolt(name, start, length, seed, depth=6, rough=0.17, radius=0.02, branches=3):
+    """Fractal (midpoint-displacement) lightning in the X-Z plane: white-hot core plus a faint cool halo.
+    (A regular zig-zag with a red halo read as a cartoon squiggle.)"""
     R = random.Random(seed)
-    pts = [Vector(start)]
-    for i in range(segs):
-        p = pts[-1] + Vector((R.uniform(-spread, spread), 0, -length / segs))
-        pts.append(p)
-    core = C.material("emissive", "bolt_core", color="#ffe8e4", strength=60.0)
+
+    def path(a, b, depth, rough):
+        pts = [Vector(a), Vector(b)]
+        for _ in range(depth):
+            nxt = [pts[0]]
+            for p, q in zip(pts, pts[1:]):
+                m = (p + q) / 2
+                m.x += R.uniform(-1, 1) * (q - p).length * rough
+                nxt += [m, q]
+            pts = nxt
+        return pts
+
+    a = Vector(start)
+    pts = path(a, a + Vector((R.uniform(-1.6, 1.6), 0, -length)), depth, rough)
+    core = C.material("emissive", "bolt_core", color="#f1fbff", strength=70.0)
     glow_m, nt, out = C.new_mat("bolt_glow")
-    em = C.N(nt, "Emission", {"Color": C.col("#ff3a2a"), "Strength": 5.0})
+    em = C.N(nt, "Emission", {"Color": C.col("#8fe6ff"), "Strength": 2.2})
     tr = C.N(nt, "BsdfTransparent")
-    mxs = C.N(nt, "MixShader", {"Fac": 0.5})
+    mxs = C.N(nt, "MixShader", {"Fac": 0.28})
     nt.links.new(tr.outputs[0], mxs.inputs[1]); nt.links.new(em.outputs[0], mxs.inputs[2])
     nt.links.new(mxs.outputs[0], out.inputs["Surface"])
     objs = [C.cable(name, [tuple(p) for p in pts], radius, core, resolution=1, role="keep"),
-            C.cable(name + "_g", [tuple(p) for p in pts], radius * 5, glow_m, resolution=1, role="keep")]
+            C.cable(name + "_g", [tuple(p) for p in pts], radius * 4, glow_m, resolution=1, role="keep")]
     for b in range(branches):
-        i = R.randint(2, segs - 4)
-        q = [pts[i]]
+        p0 = pts[R.randint(len(pts) // 5, len(pts) * 3 // 5)]
+        L = length * R.uniform(0.16, 0.32)
         sgn = R.choice((-1, 1))
-        for j in range(5):
-            q.append(q[-1] + Vector((sgn * R.uniform(0.3, 1.0), 0, -R.uniform(0.3, 0.8))))
-        objs.append(C.cable(f"{name}_b{b}", [tuple(p) for p in q], radius * 0.6, core, resolution=1, role="keep"))
+        p1 = p0 + Vector((sgn * L * R.uniform(0.5, 0.9), 0, -L * R.uniform(0.55, 0.95)))
+        objs.append(C.cable(f"{name}_b{b}", [tuple(p) for p in path(p0, p1, 4, 0.2)], radius * 0.5, core,
+                            resolution=1, role="keep"))
     for o in objs:
         o.visible_shadow = False
     return objs
 
 
-bolt("bolt", (2.8, SKY_Y - 1.0, 12.0), 13.0, 5, segs=26, spread=0.45, radius=0.022, branches=3)
+bolt("bolt", (2.8, SKY_Y - 1.0, 12.0), 13.0, 5)
 
 
 def rain_on_glass(name, n, seed=4):

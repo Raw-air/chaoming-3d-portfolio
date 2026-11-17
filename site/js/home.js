@@ -10,7 +10,7 @@ const mailto = `mailto:${PROFILE.email}?subject=${encodeURIComponent('3D 建模�
 {
   const w = workById(HOME.hero);
   $('#hero').innerHTML = `
-    <div class="hero-media">${media({ src: renderPath(w.id, 'hero.jpg'), fallback: w.still || '', alt: `${w.title}（${w.en}）`, ratio: '', label: w.title, sub: w.en, cls: 'fill', eager: true })}</div>
+    <div class="hero-media">${media({ src: renderPath(w.id, 'hero.jpg'), fallback: w.still || '', alt: `${w.title}（${w.en}）`, ratio: '', label: w.title, sub: w.en, cls: 'fill', eager: true, pos: w.focus })}</div>
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="wrap hero-in">
       <span class="label hero-kicker">${esc(PROFILE.role)} — ${esc(PROFILE.nameEn)}</span>

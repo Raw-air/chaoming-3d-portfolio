@@ -33,7 +33,7 @@ function render(w) {
 
   const pnItem = (o, dir) => `
     <a class="pn-item pn-${dir}" href="work.html?id=${o.id}" style="--accent:${o.accent}">
-      ${media({ src: renderPath(o.id, 'hero.jpg'), fallback: o.still || '', alt: '', ratio: '', ...{ label: o.title, sub: o.en }, cls: 'fill' })}
+      ${media({ src: renderPath(o.id, 'hero.jpg'), fallback: o.still || '', alt: '', ratio: '', ...{ label: o.title, sub: o.en }, cls: 'fill', pos: o.focus })}
       <span class="pn-shade" aria-hidden="true"></span>
       <span class="pn-txt">
         <span class="label">${dir === 'prev' ? '← 上一件 PREVIOUS' : '下一件 NEXT →'}</span>
@@ -44,7 +44,7 @@ function render(w) {
 
   $('#work').innerHTML = `
   <section class="hero hero-work" aria-label="${esc(w.title)}">
-    <div class="hero-media">${media({ ...ph, src: P('hero.jpg'), fallback: w.still || '', alt: `${w.title} 主視覺`, ratio: '', cls: 'fill', eager: true })}</div>
+    <div class="hero-media">${media({ ...ph, src: P('hero.jpg'), fallback: w.still || '', alt: `${w.title} 主視覺`, ratio: '', cls: 'fill', eager: true, pos: w.focus })}</div>
     <div class="hero-shade" aria-hidden="true"></div>
     <div class="wrap hero-in">
       <div class="wk-head">
@@ -168,7 +168,7 @@ function render(w) {
     if (!ready.includes(b)) return;
     const items = ready.map((x) => {
       const fig = x.closest('figure');
-      return { src: $('img', x).currentSrc || $('img', x).src, title: `${w.no} ${w.title}`, note: $('.cap', fig)?.textContent || '' };
+      return { src: $('img', x).currentSrc || $('img', x).src, title: w.title, note: $('.cap', fig)?.textContent || '' };
     });
     openLightbox(items, ready.indexOf(b));
   });
@@ -249,12 +249,12 @@ function initTurntable(w) {
   el.addEventListener('pointermove', (e) => {
     if (!drag) return;
     const step = drag.w / N;                       // 拖過整個寬度 = 轉一圈
-    show(drag.f - Math.round((e.clientX - drag.x) / step));
+    show(drag.f + Math.round((e.clientX - drag.x) / step));   // 往右拖 = 模型正面跟著往右轉
   });
   const end = () => { drag = null; el.classList.remove('dragging'); };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('keydown', (e) => {
-    const d = { ArrowLeft: 1, ArrowRight: -1, Home: -cur, End: N - 1 - cur }[e.key];
+    const d = { ArrowLeft: -1, ArrowRight: 1, Home: -cur, End: N - 1 - cur }[e.key];
     if (d === undefined || el.classList.contains('is-off')) return;
     e.preventDefault(); stop(); show(cur + d);
   });

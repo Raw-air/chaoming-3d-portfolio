@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/';
-const EXPLODE_GAIN = 1.6;                          // 檢視器裡的拆解幅度比舊場景大一些，零件才分得開
+const EXPLODE_GAIN = 1.2;                          // 拆解幅度：拉到底零件要分得開，但不能小到看不清
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function webglOK() {
@@ -98,21 +98,29 @@ export async function createViewer(host, { url, accent = '#ffffff', explode = 0,
   }
   scene.add(root);
 
-  // 鏡頭
+  // 鏡頭：依模型繞垂直軸轉一圈時的實際範圍取景（用外接球的話，扁平的模型在畫面裡會太小）
   const sphere = box.getBoundingSphere(new THREE.Sphere());
   const center = sphere.center.clone(), R = sphere.radius;
-  const baseDist = (R / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.08;
+  const size = box.getSize(new THREE.Vector3());
   const az = THREE.MathUtils.degToRad(35), el = THREE.MathUtils.degToRad(16);
+  const rH = 0.5 * Math.hypot(size.x, size.z);                     // 轉一圈時水平方向的最大半徑
+  const halfV = 0.5 * size.y * Math.cos(el) + rH * Math.sin(el);   // 俯角下畫面上的半高
+  const fitDist = () => {
+    const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), th = tv * camera.aspect;
+    return Math.max(halfV / tv, rH / th) * 1.12 + rH * 0.6;        // + rH * 0.6：靠近鏡頭的那一側透視會放大
+  };
+  let baseDist = fitDist();
   const homeDir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-  camera.near = R / 50; camera.far = baseDist * 8; camera.updateProjectionMatrix();
+  camera.near = R / 50; camera.far = R * 60; camera.updateProjectionMatrix();
 
   host.appendChild(renderer.domElement);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.08;
   controls.rotateSpeed = 0.8; controls.enablePan = false;
-  controls.minDistance = R * 0.35; controls.maxDistance = baseDist * 3.2;
+  controls.minDistance = R * 0.35; controls.maxDistance = R * 14;
   controls.autoRotate = !reduced; controls.autoRotateSpeed = 0.7;
-  controls.addEventListener('start', () => { controls.autoRotate = false; });
+  let touched = false;
+  controls.addEventListener('start', () => { controls.autoRotate = false; touched = true; });
 
   let zoomK = 1;                                   // 拆開時鏡頭跟著退一點（保留使用者的縮放比例）
   const reset = () => {
@@ -124,7 +132,13 @@ export async function createViewer(host, { url, accent = '#ffffff', explode = 0,
   const resize = () => {
     const w = host.clientWidth || 1, h = host.clientHeight || 1;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = true;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    baseDist = fitDist();
+    if (!touched) {                                 // 還沒被拖過：方向不變，只依新的長寬比重算距離
+      const off = camera.position.clone().sub(controls.target);
+      if (off.lengthSq() > 1e-9) camera.position.copy(controls.target).addScaledVector(off.normalize(), baseDist * zoomK);
+    }
+    dirty = true;
   };
   const ro = new ResizeObserver(resize); ro.observe(host);
 
