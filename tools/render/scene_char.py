@@ -487,6 +487,9 @@ BULB_L = C.point("bulb_l", tuple(BULB + Vector((0, 0, -0.05))), 25, C.kelvin(260
 C.haze("haze", (0, (BACK + FRONT) / 2, H / 2), (2 * W - 0.05, BACK - FRONT - 0.1, H - 0.05), 0.006, "#cfe3e0", 0.5)
 
 # ---------------------------------------------------------------- shots
+# NOTE hero: the camera sits 5 cm from the left wall, so the leftmost ~250 px of the 1920 px frame are the unlit
+# wall edge (a pure black strip). The published site/renders/char/hero.jpg has that strip cropped off
+# (1670x1080); after re-rendering the hero, crop it again: Image.open(p).crop((250, 0, 1920, 1080)).
 SHOTS = [
     C.Shot("hero", dict(loc=(-1.7, -3.25, 1.6), target=(0.0, -0.05, 1.5), lens=85, fstop=1.8, focus=tuple(EYES),
                         shift=(-0.14, 0.0)),

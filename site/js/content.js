@@ -51,7 +51,7 @@ export const WORKS = [
   },
   {
     id: 'char', no: '03', title: '男主角', en: 'PROTAGONIST', cat: '角色', catEn: 'CHARACTER',
-    accent: '#ffb347', project: '動畫《CRASH》', still: 'img/crash-3.jpg', deliver: QUAD, focus: '66% 40%',
+    accent: '#ffb347', project: '動畫《CRASH》', still: 'img/crash-3.jpg', deliver: QUAD, focus: '62% 40%',
     lead: '《CRASH》的主角：飛行夾克、圍巾、工裝褲與護目鏡。風格化的比例要能動起來不破面，所以身體與服裝分層、配件獨立成件，方便換裝與綁定。',
     goal: '風格化的比例，動起來不能破面。',
     approach: '身體與服裝分層，配件獨立成件。關節留足環線，皺褶順著布料受力的方向走。',
