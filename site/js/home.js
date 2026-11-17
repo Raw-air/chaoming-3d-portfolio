@@ -38,7 +38,7 @@ $('#works-grid').innerHTML = WORKS.map((w) => {
   return `<a class="card ${lay}" href="work.html?id=${w.id}" style="--accent:${w.accent}" data-reveal data-id="${w.id}">
     <div class="card-media">${media({
       src: renderPath(w.id, feat ? 'hero.jpg' : 'card.jpg'), fallback: feat && w.still ? w.still : '',
-      alt: `${w.title}（${w.en}）`, ratio: '', label: w.title, sub: w.en })}</div>
+      alt: `${w.title}（${w.en}）`, ratio: '', label: w.title, sub: w.en, pos: feat ? w.focus : '' })}</div>
     <div class="card-meta">
       <span class="card-no">${w.no}</span>
       <h3 class="card-t">${esc(w.title)}<span class="card-en">${esc(w.en)}</span></h3>

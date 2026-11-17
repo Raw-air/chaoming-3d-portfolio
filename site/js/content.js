@@ -60,7 +60,7 @@ export const WORKS = [
   },
   {
     id: 'pod', no: '04', title: '生物倉', en: 'BIO POD', cat: '場景道具', catEn: 'PROP',
-    accent: '#1fffd2', deliver: QUAD,
+    accent: '#1fffd2', deliver: QUAD, focus: '61% 50%',
     lead: '泡在青綠色光裡的生物倉。透明的玻璃與金屬外殼要分得開，所以玻璃、艙蓋、管路、儀表盒各自成件。',
     goal: '透明與金屬兩種材質要分得開。',
     approach: '玻璃、艙蓋、管路、儀表盒各自成件。頂蓋的卡榫、環狀管路、側邊儀表盒，每個零件都有厚度。',
@@ -87,7 +87,7 @@ export const WORKS = [
   },
   {
     id: 'airship', no: '07', title: '熱氣球飛船', en: 'SKY SHIP', cat: '硬表面 · 大型組件', catEn: 'HARD SURFACE / ASSEMBLY',
-    accent: '#ffd27a', project: '動畫《SMASH!》', feature: true, still: 'img/smash-3.jpg', deliver: QUAD,
+    accent: '#ffd27a', project: '動畫《SMASH!》', feature: true, still: 'img/smash-3.jpg', deliver: QUAD, focus: '69% 50%',
     lead: '動畫《SMASH!》裡船長的船，停在天空漁港的碼頭邊。要做出一艘看得出有人在上面生活的船：補丁氣囊、纜繩、魚鰭尾翼，甲板上堆滿木桶與漁獲。',
     goal: '一艘看得出有人在上面生活的船。',
     approach: '補丁氣囊、纜繩、魚鰭尾翼，甲板上的舵輪、船錨、地籠與油桶。255 個部件，每條繩索、每塊甲板都是獨立物件。',
