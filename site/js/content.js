@@ -28,6 +28,7 @@ const QUAD = ['四邊面佈線', 'UV 已展開', 'FBX'];
 
 // view：互動檢視器的設定（explode 拆解幅度、flying 從中心拆開、wireOpacity 線框濃度）
 // still：渲染圖還沒產生時，主視覺改用的既有劇照（只用在同一部動畫的作品上）
+// focus：主視覺被裁切時（例如手機直式畫面）要保留的焦點，寫法同 CSS object-position；主體在畫面中央就不用寫
 export const WORKS = [
   {
     id: 'ship', no: '01', title: '飛行艇', en: 'AIRCRAFT', cat: '硬表面 · 載具', catEn: 'HARD SURFACE / VEHICLE',
@@ -50,7 +51,7 @@ export const WORKS = [
   },
   {
     id: 'char', no: '03', title: '男主角', en: 'PROTAGONIST', cat: '角色', catEn: 'CHARACTER',
-    accent: '#ffb347', project: '動畫《CRASH》', still: 'img/crash-3.jpg', deliver: QUAD,
+    accent: '#ffb347', project: '動畫《CRASH》', still: 'img/crash-3.jpg', deliver: QUAD, focus: '66% 40%',
     lead: '《CRASH》的主角：飛行夾克、圍巾、工裝褲與護目鏡。風格化的比例要能動起來不破面，所以身體與服裝分層、配件獨立成件，方便換裝與綁定。',
     goal: '風格化的比例，動起來不能破面。',
     approach: '身體與服裝分層，配件獨立成件。關節留足環線，皺褶順著布料受力的方向走。',
