@@ -151,7 +151,31 @@ def worn_leather(name, color, scuff=1.0):
     return m
 
 
-LOOKS = {    "ch_skin": ("skin", dict(color="#c08562", rough=0.42, sss=0.3)),
+def skin_scalp(name, color="#c08562", rough=0.42, sss=0.3, hair="#1e140d"):
+    """Skin, but painted hair-dark on the scalp, so the gaps between the sculpted curls
+    (most visible from behind) read as hair instead of a bald patch.
+    Object space = model metres (+z up, face toward -y). The hairline slopes from ~1.70 m at
+    the forehead to ~1.56 m at the nape, and stays off the ears (|x| > ~0.07 below 1.66 m)."""
+    m, nt, out = C.new_mat(name)
+    v = C.coords(nt)
+    xyz = C.N(nt, "SeparateXYZ", {"Vector": v})
+    x, y, z = xyz.outputs[0], xyz.outputs[1], xyz.outputs[2]
+    line = _m(nt, "ADD", _m(nt, "MULTIPLY", y, -0.78), 1.622)          # hairline height at this depth
+    above = C.maprange(nt, _m(nt, "SUBTRACT", z, line), -0.008, 0.012)  # soft 2 cm fade
+    ears = _m(nt, "MULTIPLY", C.maprange(nt, _m(nt, "ABSOLUTE", x), 0.062, 0.078),
+              C.maprange(nt, z, 1.675, 1.655))                         # 1 at ear sides below 1.66 m
+    mask = _m(nt, "MULTIPLY", above, _m(nt, "SUBTRACT", 1.0, ears), clamp=True)
+    n = C.noise(nt, v, 60.0, 6, 0.6)
+    blot = C.noise(nt, v, 6.0, 3, 0.5)
+    shade = C.mix(nt, C.maprange(nt, blot, 0.4, 0.7, 0, 0.18), C.col(color), "#9b4a3a")
+    shade = C.mix(nt, mask, shade, hair)
+    r = C.mixf(nt, mask, C.maprange(nt, n, 0.3, 0.7, rough - 0.08, rough + 0.08), 0.7)
+    C.principled(nt, out, color=shade, rough=r, sss=C.mixf(nt, mask, sss, 0.0), sss_radius=(1.0, 0.35, 0.18),
+                 sss_scale=0.015, spec=0.5, normal=C.bump(nt, n, 0.08, 0.0005))
+    return m
+
+
+LOOKS = {    "ch_skin": skin_scalp("look_ch_skin"),
     "ch_hair": hair_mat("look_ch_hair"),
     "ch_coat": ("fabric", dict(color="#62603a", rough=0.82, weave=260.0, sheen=0.25)),
     "ch_pants": ("fabric", dict(color="#6a3d2b", rough=0.86, weave=300.0, sheen=0.3)),
