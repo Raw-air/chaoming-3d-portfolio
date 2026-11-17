@@ -5,10 +5,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 /* ---------------------------------------------------------------- 後製：鏡頭扭曲 / 色散 / 放射殘影 / 故障切片 / 顆粒 */
 export function createWarpPass() {
   return new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, uVel: { value: 0 }, uWarp: { value: 0 }, uGlitch: { value: 0 }, uTime: { value: 0 }, uAspect: { value: 1 }, uGrain: { value: 0.02 }, uMouse: { value: new THREE.Vector2(0.5, 0.5) }, uMouseV: { value: 0 } },
+    uniforms: { tDiffuse: { value: null }, uVel: { value: 0 }, uWarp: { value: 0 }, uGlitch: { value: 0 }, uTime: { value: 0 }, uAspect: { value: 1 }, uGrain: { value: 0.02 }, uMouse: { value: new THREE.Vector2(0.5, 0.5) }, uMouseV: { value: 0 }, uFlash: { value: 0 }, uFlashCol: { value: new THREE.Color(1, 1, 1) } },
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
-      uniform sampler2D tDiffuse; uniform float uVel, uWarp, uGlitch, uTime, uAspect, uGrain, uMouseV; uniform vec2 uMouse; varying vec2 vUv;
+      uniform sampler2D tDiffuse; uniform float uVel, uWarp, uGlitch, uTime, uAspect, uGrain, uMouseV, uFlash; uniform vec2 uMouse; uniform vec3 uFlashCol; varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       void main(){
         vec2 uv = vUv;
@@ -41,6 +41,7 @@ export function createWarpPass() {
         }
         col += (hash(uv * vec2(1733.0, 977.0) + fract(uTime) * 71.3) - 0.5) * uGrain;
         col *= 1.0 - smoothstep(0.38, 1.05, r) * (0.3 + uWarp * 0.35);
+        col = mix(col, uFlashCol, clamp(uFlash, 0.0, 1.0));                          // 跨場景時的閃光
         gl_FragColor = vec4(max(col, 0.0), 1.0);
       }`,
   });

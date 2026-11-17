@@ -274,3 +274,9 @@ body.has-cursor #stage, body.has-cursor #stage.dragging, body.has-cursor #stage.
   .awards { columns: 1 !important; font-size: 12.5px; } .awards li { padding: 3px 0; }
 }
 @media (prefers-reduced-motion: reduce) { .split .ch { transition: none; transform: none; opacity: 1; filter: none; } #marquee { display: none; } }
+
+/* v3 scene scrim: dark radial backing for text on bright scenes (--scrim set per scene) */
+.panel .box { position: relative; }
+.panel .box::before { content: ''; position: absolute; inset: -70px -90px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(4,6,10,.88), rgba(4,6,10,.55) 60%, rgba(4,6,10,0)); opacity: var(--scrim, 0); transition: opacity .4s; }
+.panel.gal .box::before { display: none; }
+@media (max-width: 820px) { .panel .box::before { opacity: 0; } }

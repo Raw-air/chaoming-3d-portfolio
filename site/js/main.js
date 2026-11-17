@@ -1,3 +1,4 @@
+// 主程式：一件作品一個場景，串成一趟旅程（暴風圈 → 機艙 → 天空漁港 → 雕刻暗室 → 藝廊 → 黃昏漁港）
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
@@ -6,8 +7,10 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { PROFILE, WORKS, GALLERY, SERVICES, PROCESS, AWARDS } from './data.js';
-import { createWarpPass, createSky, galleryMaterial, splitText, scramble, createCursor, createMarquee } from './fx.js';
+import { WORKS, MOODS, HERO, FINALE, DECK } from './scenes.js';
+import { PROFILE, GALLERY, SERVICES, PROCESS, AWARDS } from './data.js';
+import { buildSets } from './sets.js';
+import { createWarpPass, galleryMaterial, splitText, scramble, createCursor, createMarquee } from './fx.js';
 
 const $ = (s) => document.querySelector(s);
 const DEG = Math.PI / 180;
@@ -16,7 +19,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const BG = 0x06070b;
+const JUKEBOX = WORKS.findIndex((w) => w.id === 'jukebox');
 
 /* ------------------------------------------------------------------ beats (運鏡腳本) */
 const beats = [];
@@ -27,16 +30,16 @@ const heroHTML = `
   <p class="lead">${PROFILE.lead}</p>
   <div class="hero-stats">${PROFILE.heroStats.map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('')}</div>
   <div class="scroll"><i></i>往下捲動，開始檢查</div>`;
-beats.push({ kind: 'orbit', work: 0, az: -34, el: 2, d: 13, f: [0, 2.3, 0], side: 1, mode: 'shaded', html: heroHTML, cls: 'hero', chapter: 'top' });
+beats.push({ kind: 'orbit', work: 0, ...HERO, set: 'storm', mood: 'storm', html: heroHTML, cls: 'hero', chapter: 'top' });
 chapters.push({ id: 'top', label: '首頁', beat: 0 });
 
 WORKS.forEach((w, wi) => {
   chapters.push({ id: w.id, label: `${w.no} ${w.title}`, beat: beats.length, work: wi });
-  w.shots.forEach((s) => {
+  w.shots.forEach((s, si) => {
     const spec = s.spec ? `<dl class="spec">${s.spec.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '';
     const chips = s.chips ? `<div class="chips">${s.chips.map((c) => `<span>${c}</span>`).join('')}</div>` : '';
     const stats = s.stats ? `<div class="stats" data-stats="${w.id}"></div><div class="chips">${w.deliver.map((c) => `<span>${c}</span>`).join('')}</div>` : '';
-    beats.push({ kind: 'orbit', work: wi, ...s, chapter: w.id,
+    beats.push({ kind: 'orbit', work: wi, ...s, set: w.set, mood: w.mood, last: si === w.shots.length - 1, chapter: w.id,
       html: `<div class="kicker" data-scr>${s.kicker}</div><h2>${s.h}</h2><p>${s.p}</p>${spec}${chips}${stats}` });
   });
 });
@@ -45,11 +48,11 @@ const firstWorkBeat = 1;
 const GC = new THREE.Vector3(GALLERY.center[0], GALLERY.eye, GALLERY.center[1]);
 const GYAW0 = Math.PI;
 chapters.push({ id: 'gallery', label: '藝廊', beat: beats.length });
-[-74, 0, 74].forEach((deg, i) => beats.push({ kind: 'pan', yaw: GYAW0 + deg * DEG, pitch: 1.5 * DEG, side: 0, mode: 'shaded', chapter: 'gallery', cls: 'gal',
+[-74, 0, 74].forEach((deg, i) => beats.push({ kind: 'pan', yaw: GYAW0 + deg * DEG, pitch: 1.5 * DEG, side: 0, mode: 'shaded', set: 'gallery', mood: 'gallery', chapter: 'gallery', cls: 'gal',
   html: i === 0 ? `<div class="kicker" data-scr>RENDER GALLERY — 渲染與劇照</div><h2>環形藝廊</h2><p>繼續捲動環顧四周，點任何一張圖放大。</p>` : null }));
 
 chapters.push({ id: 'about', label: '服務', beat: beats.length });
-beats.push({ kind: 'free', pos: [0, 15, 24], target: [-9, 3, -30], side: 0, mode: 'shaded', chapter: 'about', cls: 'about',
+beats.push({ kind: 'free', pos: FINALE.about.pos, target: FINALE.about.target, side: 0, mode: 'shaded', set: 'port', mood: 'dusk', chapter: 'about', cls: 'about',
   html: `<div class="kicker" data-scr>WHAT I DO — 我能幫你做什麼</div><h2>你出想法，我交模型</h2>
     <div class="svc">${SERVICES.map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`).join('')}</div>
     <div class="about-foot">
@@ -57,12 +60,38 @@ beats.push({ kind: 'free', pos: [0, 15, 24], target: [-9, 3, -30], side: 0, mode
       <div><h3>RECOGNITION — 獎項肯定</h3><ul class="awards">${AWARDS.map(([y, t]) => `<li><span>${y}</span>${t}</li>`).join('')}</ul></div>
     </div>` });
 chapters.push({ id: 'contact', label: '聯絡', beat: beats.length });
-beats.push({ kind: 'free', pos: [-10, 30, 20], target: [-9, 0, -28], side: 0, mode: 'shaded', chapter: 'contact', cls: 'contact',
+beats.push({ kind: 'free', pos: FINALE.contact.pos, target: FINALE.contact.target, side: 0, mode: 'shaded', set: 'port', mood: 'dusk', chapter: 'contact', cls: 'contact',
   html: `<div class="kicker" data-scr>START A PROJECT — 開始合作</div><h2><span class="ln">有模型要做？</span><span class="ln">說說你的專案。</span></h2>
     <p class="lead">附上參考圖、用途與期限，我會回覆可行的做法與報價。角色、道具、場景，或整支動畫的 3D 需求都可以聊。</p>
     <a class="mail" href="mailto:${PROFILE.email}?subject=${encodeURIComponent('3D 建模合作洽詢')}"><span>寫信給我</span><em>${PROFILE.email}</em><b>→</b></a>
     <div class="contact-meta">${PROFILE.phone ? `<a href="tel:${PROFILE.phoneHref}">${PROFILE.phone}</a>` : ''}<span>TAIWAN <b id="tw-time">--:--</b> · 可遠端合作</span><span>BLENDER · AFTER EFFECTS · PHOTOSHOP</span></div>` });
 const N = beats.length;
+
+/* ------------------------------------------------------------------ moods (場景氛圍) */
+const COLK = ['bg', 'fog', 'hemiSky', 'hemiGnd', 'keyCol', 'skyTop', 'skyHor', 'skyCloud', 'sunCol'];
+const VECK = ['keyDir', 'sunDir'];
+const NUMK = ['fogD', 'hemiI', 'keyI', 'env', 'expo', 'bloomS', 'bloomT', 'rimK', 'fillK', 'sky', 'skyAmt', 'skySpeed', 'sunAmt', 'scrim', 'stars'];
+const MOOD_DEF = {
+  bg: '#06070b', fog: '#06070b', hemiSky: '#9fb4d8', hemiGnd: '#0b0b10', keyCol: '#fff1e0', skyTop: '#000000', skyHor: '#000000', skyCloud: '#000000', sunCol: '#ffffff',
+  keyDir: [6, 10, 8], sunDir: [0, 1, 0],
+  fogD: 0.0105, hemiI: 0.55, keyI: 1.5, env: 0.42, expo: 0.95, bloomS: 0.4, bloomT: 0.92, rimK: 1, fillK: 1, sky: 0, skyAmt: 0, skySpeed: 1, sunAmt: 0, scrim: 0, stars: 0,
+};
+function makeMood(src = {}) {
+  const m = {};
+  for (const n of COLK) m[n] = new THREE.Color(src[n] ?? MOOD_DEF[n]);
+  for (const n of VECK) m[n] = new THREE.Vector3().fromArray(src[n] ?? MOOD_DEF[n]);
+  for (const n of NUMK) m[n] = typeof src[n] === 'number' ? src[n] : MOOD_DEF[n];
+  return m;
+}
+function mixMood(out, a, b, k) {
+  for (const n of COLK) out[n].lerpColors(a[n], b[n], k);
+  for (const n of VECK) out[n].lerpVectors(a[n], b[n], k);
+  for (const n of NUMK) out[n] = lerp(a[n], b[n], k);
+}
+const moods = {};
+for (const k of Object.keys(MOODS)) moods[k] = makeMood(MOODS[k]);
+const M = makeMood(MOODS.storm);
+const moodOf = (name) => moods[name] || moods.storm;
 
 /* ------------------------------------------------------------------ DOM */
 const panelsEl = $('#panels');
@@ -117,15 +146,15 @@ let dpr = Math.min(devicePixelRatio || 1, 1.5);
 renderer.setPixelRatio(dpr);
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMappingExposure = M.expo;
 renderer.localClippingEnabled = true;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(BG);
-scene.fog = new THREE.FogExp2(BG, 0.0105);
+scene.background = M.bg.clone();
+scene.fog = new THREE.FogExp2(M.fog.clone(), M.fogD);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.42;
+scene.environmentIntensity = M.env;
 
 const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 700);
 camera.position.set(0, 3, 16);
@@ -133,7 +162,7 @@ camera.position.set(0, 3, 16);
 const rt = new THREE.WebGLRenderTarget(innerWidth * dpr, innerHeight * dpr, { type: THREE.HalfFloatType, samples: 4 });
 const composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.4, 0.6, 0.92);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), M.bloomS, 0.6, M.bloomT);
 composer.addPass(bloom);
 const warp = createWarpPass();
 composer.addPass(warp);
@@ -141,7 +170,8 @@ composer.addPass(new OutputPass());
 const WU = warp.uniforms;
 
 /* ------------------------------------------------------------------ lights */
-scene.add(new THREE.HemisphereLight(0x9fb4d8, 0x0b0b10, 0.55));
+const hemi = new THREE.HemisphereLight(0x9fb4d8, 0x0b0b10, 0.55);
+scene.add(hemi);
 const key = new THREE.DirectionalLight(0xfff1e0, 1.55);
 key.position.set(6, 10, 8);
 scene.add(key, key.target);
@@ -149,33 +179,7 @@ const rim = new THREE.PointLight(0xff6a3d, 260, 0, 2);
 const fill = new THREE.PointLight(0x9fc4ff, 60, 0, 2);
 scene.add(rim, fill);
 
-/* ------------------------------------------------------------------ environment */
-const sky = createSky(BG);
-scene.add(sky);
-const groundMat = new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  uniforms: { uCam: { value: new THREE.Vector3() }, uPos: { value: new THREE.Vector2() }, uColor: { value: new THREE.Color('#ff6a3d') }, uTime: { value: 0 } },
-  vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-  fragmentShader: `
-    varying vec3 vW; uniform vec3 uCam; uniform vec2 uPos; uniform vec3 uColor; uniform float uTime;
-    float grid(vec2 p){ vec2 fw = fwidth(p); vec2 a = abs(fract(p - 0.5) - 0.5) / max(fw, vec2(1e-4)); return 1.0 - min(min(a.x, a.y), 1.0); }
-    void main(){
-      float l = grid(vW.xz / 2.0) * 0.6 + grid(vW.xz / 10.0) * 0.5;
-      float dc = distance(vW.xz, uCam.xz);
-      float fade = exp(-dc * 0.03);
-      float ds = distance(vW.xz, uPos);
-      float wave = mod(uTime * 3.2, 18.0);
-      float ring = smoothstep(0.5, 0.0, abs(ds - wave)) * exp(-ds * 0.13);
-      float glow = exp(-ds * 0.2);
-      vec3 col = vec3(0.32, 0.4, 0.55) * l * fade * 0.5 + uColor * (ring * (0.12 + l * 0.8) + glow * (0.018 + l * 0.32));
-      gl_FragColor = vec4(col, 1.0);
-    }`,
-});
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.set(-5, 0, -25);
-scene.add(ground);
-
+/* ------------------------------------------------------------------ environment: stars (only in moods with stars) */
 function makePoints(n, fn, size, color, opacity, fog) {
   const pos = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) fn(pos, i * 3);
@@ -187,9 +191,8 @@ const stars = makePoints(2200, (p, i) => {
   const v = new THREE.Vector3().randomDirection(); v.y = Math.abs(v.y) * 0.9 + 0.03; v.normalize().multiplyScalar(260 + Math.random() * 60);
   p[i] = v.x; p[i + 1] = v.y; p[i + 2] = v.z;
 }, 1.5, 0xcfd8ff, 0.8, false);
+stars.frustumCulled = false; stars.visible = false;
 scene.add(stars);
-const dust = makePoints(1400, (p, i) => { p[i] = -60 + Math.random() * 110; p[i + 1] = 0.3 + Math.random() * 12; p[i + 2] = -80 + Math.random() * 100; }, 0.035, 0xfff0dd, 0.5, true);
-scene.add(dust);
 
 function glowTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -200,17 +203,11 @@ function glowTexture() {
 }
 const glowTex = glowTexture();
 
-/* ------------------------------------------------------------------ stages */
+// 場景（buildSets）在字型載入後才建立，見 boot()
+let sets = null;
+
+/* ------------------------------------------------------------------ stages (每件作品的位置：模型、掃描環、地面標記) */
 const timeU = { value: 0 };
-const pedMat = new THREE.MeshStandardMaterial({ color: 0x090a0e, roughness: 0.62, metalness: 0.35 });
-function beamMaterial(color) {
-  return new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-    uniforms: { uColor: { value: new THREE.Color(color) }, uAmp: { value: 0 } },
-    vertexShader: `varying vec2 vUv; varying float vF; void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position,1.0); vec3 n = normalize(normalMatrix * normal); vF = abs(dot(n, normalize(-mv.xyz))); gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `varying vec2 vUv; varying float vF; uniform vec3 uColor; uniform float uAmp; void main(){ float a = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 3.0) * 0.16 * uAmp * pow(clamp(vF, 0.0, 1.0), 2.2); gl_FragColor = vec4(uColor * a, 1.0); }`,
-  });
-}
 // 所有作品材質共用的頂點注入：爆炸拆解位移（aDir）＋抵達時的表面波動
 function inject(mat, w, useNormal) {
   mat.onBeforeCompile = (sh) => {
@@ -224,20 +221,15 @@ function inject(mat, w, useNormal) {
 
 const works = WORKS.map((w, i) => {
   const stage = new THREE.Group();
-  stage.position.set(w.pos[0], 0, w.pos[1]);
+  stage.position.fromArray(w.pos);
+  stage.visible = false;
   const accent = new THREE.Color(w.accent);
-  const baseY = w.lift > 0 ? w.lift : 0.3;
-  if (w.lift === 0) {
-    const ped = new THREE.Mesh(new THREE.CylinderGeometry(w.pad, w.pad * 1.1, 0.3, 72), pedMat);
-    ped.position.y = 0.15; stage.add(ped);
+  const baseY = w.lift || 0.01;
+  // 地面上的細環標記（飛在空中的作品不需要）
+  if (!w.flying) {
+    const mark = new THREE.Mesh(new THREE.TorusGeometry(w.pad * 1.05, 0.012, 6, 160), new THREE.MeshBasicMaterial({ color: accent.clone().multiplyScalar(1.6) }));
+    mark.rotation.x = Math.PI / 2; mark.position.y = (w.lift || 0) + 0.02; stage.add(mark);
   }
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(w.pad * 1.02, 0.02, 8, 160), new THREE.MeshBasicMaterial({ color: accent.clone().multiplyScalar(1.7) }));
-  ring.rotation.x = Math.PI / 2; ring.position.y = w.lift > 0 ? 0.03 : 0.31; stage.add(ring);
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(w.pad * 1.55, 0.008, 6, 160), new THREE.MeshBasicMaterial({ color: accent.clone().multiplyScalar(0.5) }));
-  ring2.rotation.x = Math.PI / 2; ring2.position.y = 0.02; stage.add(ring2);
-  const beamMat = beamMaterial(w.accent);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(w.pad * 1.02, w.pad * 1.02, 9, 64, 1, true), beamMat);
-  beam.position.y = 4.5 + ring.position.y; stage.add(beam);
   // 掃描環：材質切換時由下往上掃過模型
   const scanRing = new THREE.Group();
   const sr1 = new THREE.Mesh(new THREE.TorusGeometry(w.pad * 0.98, 0.025, 8, 128), new THREE.MeshBasicMaterial({ color: accent.clone().lerp(new THREE.Color(0xffffff), 0.4).multiplyScalar(2.4) }));
@@ -251,10 +243,10 @@ const works = WORKS.map((w, i) => {
   stage.add(holder);
   scene.add(stage);
   const lineColor = accent.clone().lerp(new THREE.Color(0xffffff), 0.3).multiplyScalar(1.25);
-  const o = { ...w, i, stage, holder, baseY, accentColor: accent, beamMat, scanRing, meshes: [], lines: [], clones: [], spin: [], pulse: [], origMats: [], fx: new THREE.Group(),
-    uExplode: { value: 0 }, uWobble: { value: 0 }, explodeT: 0, wobble: 0, height: w.scale,
+  const o = { ...w, i, stage, holder, baseY, accentColor: accent, scanRing, meshes: [], lines: [], clones: [], spin: [], pulse: [], origMats: [], fx: new THREE.Group(),
+    uExplode: { value: 0 }, uWobble: { value: 0 }, explodeT: 0, wobble: 0, minY: 0, maxY: w.scale, height: w.scale,
     pAll: new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e5), pAbove: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pBelow: new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
-    mode: 'shaded', scan: null, userYaw: 0, yawVel: 0, amp: 0, loaded: false };
+    mode: 'shaded', scan: null, userYaw: 0, yawVel: 0, loaded: false };
   o.cAll = [o.pAll]; o.cAbove = [o.pAbove]; o.cBelow = [o.pBelow];
   o.lineMat = inject(new THREE.LineBasicMaterial({ color: lineColor, transparent: true, opacity: w.wireOpacity || 0.9, depthWrite: false, clippingPlanes: o.cAll }), o, false);
   o.clayMat = inject(new THREE.MeshStandardMaterial({ color: 0xcfc8bc, roughness: 0.72, metalness: 0, clippingPlanes: o.cAll }), o, true);
@@ -287,10 +279,13 @@ function bakeDir(geo, cy, zero) {
 }
 
 function setupModel(w, root) {
+  // 先讓場景複製原始模型當陳設（之後的材質、幾何修改不會影響陳設）
+  sets.dress(w.id, root);
   const box = new THREE.Box3().setFromObject(root);
-  // 拆解的原點：浮空的模型從中心炸開；站在展台上的從底部往上、往外拆（不會穿進地板）
-  const cy = w.lift > 0 ? (box.min.y + box.max.y) / 2 : box.min.y;
-  w.height = (box.max.y - box.min.y) * w.scale;
+  // 拆解的原點：飛在空中的從中心炸開；落地的從底部往上、往外拆（不會穿進地板）
+  const cy = w.flying ? (box.min.y + box.max.y) / 2 : box.min.y;
+  w.minY = box.min.y * w.scale; w.maxY = box.max.y * w.scale;
+  w.height = w.maxY - w.minY;
   root.scale.setScalar(w.scale);
   w.holder.add(root);
   root.traverse((o) => {
@@ -375,8 +370,10 @@ function updateScan(w, dt) {
   const s = w.scan; if (!s) return;
   s.t = Math.min(1, s.t + dt / 0.95);
   const e = s.t * s.t * (3 - 2 * s.t), m = 0.35 + w.uExplode.value * w.scale * 0.7;
-  const h = lerp(w.holder.position.y - m, w.holder.position.y + w.height + m, e);
-  w.pAbove.constant = -h; w.pBelow.constant = h;
+  const hy = w.holder.position.y;
+  const h = lerp(hy + w.minY - m, hy + w.maxY + m, e);          // 舞台座標
+  const hw = h + w.stage.position.y;                              // 裁切平面用世界座標
+  w.pAbove.constant = -hw; w.pBelow.constant = hw;
   w.scanRing.position.y = h;
   w.scanRing.scale.setScalar(1 + Math.sin(e * Math.PI) * 0.12 + w.uExplode.value * 0.8);
   if (s.t >= 1) { const to = s.to; instantMode(w, to); }
@@ -409,8 +406,6 @@ function countUp(el) {
 }
 
 /* ------------------------------------------------------------------ gallery (環形藝廊) */
-const galleryGroup = new THREE.Group();
-scene.add(galleryGroup);
 const galleryMeshes = [];
 let hovered = null;
 function buildGallery() {
@@ -433,7 +428,7 @@ function buildGallery() {
       m.userData.item = it; g.add(m);
       it.group = g; it.hover = 0;
       galleryMeshes.push(m);
-      galleryGroup.add(g);
+      sets.groups.gallery.add(g);
     });
   });
 }
@@ -454,37 +449,121 @@ const _v = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3
 let portrait = innerWidth < innerHeight;
 function orbitPose(w, az, el, d, f, outPos, outTgt) {
   const dd = d * (portrait ? 1.3 : 1);
-  outTgt.set(w.pos[0] + f[0], f[1], w.pos[1] + f[2]);
+  outTgt.set(w.pos[0] + f[0], w.pos[1] + f[1], w.pos[2] + f[2]);
   outPos.set(Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)).multiplyScalar(dd).add(outTgt);
+  if (w.set === 'deck') bayLimit(outPos, outTgt, w.bay);
+}
+// 機艙鏡頭不穿出自己的艙間（隔艙牆在 z = -DECK.bay * k）：沿著朝向目標的視線把鏡頭往前推，保留構圖
+function bayLimit(pos, tgt, bay) {
+  const zMax = bay === 0 ? -0.8 : -DECK.bay * bay - 0.6, zMin = -DECK.bay * (bay + 1) + 0.6;
+  if (pos.z <= zMax && pos.z >= zMin) return;
+  const lim = pos.z > zMax ? zMax : zMin, s = (lim - tgt.z) / (pos.z - tgt.z);
+  pos.sub(tgt).multiplyScalar(s).add(tgt);
 }
 function beatPose(b, outPos, outTgt) {
   if (b.kind === 'orbit') orbitPose(WORKS[b.work], b.az, b.el, b.d, b.f, outPos, outTgt);
   else if (b.kind === 'pan') { outPos.copy(GC); outTgt.set(GC.x + Math.sin(b.yaw) * 10, GC.y + Math.sin(b.pitch) * 10, GC.z - Math.cos(b.yaw) * 10); }
   else { outPos.fromArray(b.pos); outTgt.fromArray(b.target); if (portrait) outPos.sub(outTgt).multiplyScalar(1.35).add(outTgt); }
 }
-const pose = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), side: 0, explode: 0, warp: 0 };
+
+// 機艙內：鏡頭沿曲線從一間走到下一間（繞過模型、穿過每一道艙門）
+const curves = new Map();
+function deckCurve(i, A, B) {
+  let c = curves.get(i);
+  if (c) return c;
+  const wA = WORKS[A.work], wB = WORKS[B.work];
+  const pa = new THREE.Vector3(), ta = new THREE.Vector3(), pb = new THREE.Vector3(), tb = new THREE.Vector3();
+  beatPose(A, pa, ta); beatPose(B, pb, tb);
+  const pts = [pa];
+  if (pa.z > wA.pos[2] + 0.6) pts.push(new THREE.Vector3(DECK.x + (Math.sign(pa.x - DECK.x) || 1) * 3.4, 1.8, wA.pos[2]));
+  for (let k = wA.bay + 1; k <= wB.bay; k++) pts.push(new THREE.Vector3(DECK.x, 1.9, -DECK.bay * k));
+  if (pb.z < wB.pos[2] - 0.6) pts.push(new THREE.Vector3(DECK.x + (Math.sign(pb.x - DECK.x) || 1) * 3.4, 1.8, wB.pos[2]));
+  pts.push(pb);
+  c = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  curves.set(i, c);
+  return c;
+}
+function flashColor(B, out) {
+  if (B.set === 'port') return B.mood === 'dusk' ? out.setRGB(1.5, 1.25, 1.0) : out.setRGB(1.5, 1.5, 1.5);
+  if (B.set === 'deck' || B.set === 'storm') return out.setRGB(0.9, 1.4, 1.3);
+  return out.setRGB(0, 0, 0);
+}
+
+const pose = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), side: 0, explode: 0, warp: 0, flash: 0, flashCol: new THREE.Color(1, 1, 1),
+  set: 'storm', moodA: 'storm', moodB: 'storm', moodK: 0, cargo: 0 };
 function computePose(p) {
   const i = clamp(Math.floor(p), 0, N - 1), j = Math.min(i + 1, N - 1), u = clamp(p - i, 0, 1), e = smooth(u);
   const A = beats[i], B = beats[j];
-  pose.warp = 0; pose.explode = 0;
+  pose.warp = 0; pose.explode = 0; pose.flash = 0; pose.cargo = 0;
+  pose.set = A.set; pose.moodA = A.mood; pose.moodB = B.mood; pose.moodK = e;
+  pose.side = lerp(A.side, B.side, e);
   if (A.kind === 'orbit' && B.kind === 'orbit' && A.work === B.work) {
+    // a. 同一件作品的鏡位之間：球面插值
     const f = [lerp(A.f[0], B.f[0], e), lerp(A.f[1], B.f[1], e), lerp(A.f[2], B.f[2], e)];
     orbitPose(WORKS[A.work], lerp(A.az, B.az, e), lerp(A.el, B.el, e), lerp(A.d, B.d, e), f, pose.pos, pose.tgt);
     pose.explode = lerp(A.x || 0, B.x || 0, e);
+  } else if (A.kind === 'orbit' && B.kind === 'orbit' && A.set === 'deck' && B.set === 'deck') {
+    // b. 機艙裡從一間走到下一間
+    deckCurve(i, A, B).getPointAt(e, pose.pos);
+    beatPose(A, _a, _ta); beatPose(B, _b, _tb);
+    pose.tgt.lerpVectors(_ta, _tb, smooth(clamp((u - 0.08) / 0.6, 0, 1)));
+    pose.warp = 0.25 * Math.sin(Math.PI * u);
+    pose.explode = (u < 0.5 ? (A.x || 0) : (B.x || 0)) * Math.abs(1 - 2 * u);
   } else if (A.kind === 'pan' && B.kind === 'pan') {
+    // c. 藝廊環顧
     const yaw = lerp(A.yaw, B.yaw, e), pitch = lerp(A.pitch, B.pitch, e);
     pose.pos.copy(GC); pose.tgt.set(GC.x + Math.sin(yaw) * 10, GC.y + Math.sin(pitch) * 10, GC.z - Math.cos(yaw) * 10);
+  } else if (A.kind === 'free' && B.kind === 'free' && A.set === B.set) {
+    beatPose(A, _a, _ta); beatPose(B, _b, _tb);
+    pose.pos.lerpVectors(_a, _b, e); pose.tgt.lerpVectors(_ta, _tb, e);
+  } else if (A.set !== B.set) {
+    // d. 跨場景：衝向前方 → 閃光 → 從新場景的鏡位後方推進
+    const k = u < 0.5 ? u * 2 : (1 - u) * 2, k2 = k * k;
+    if (u < 0.5) {
+      beatPose(A, _a, _ta);
+      const wA = A.kind === 'orbit' ? WORKS[A.work] : null;
+      if (wA && wA.exit && A.last) { _b.fromArray(wA.exit.pos); _tb.fromArray(wA.exit.tgt); }
+      else {
+        _v.subVectors(_ta, _a); const dist = _v.length();
+        _b.copy(_a).addScaledVector(_v, 0.82);
+        _tb.copy(_ta).addScaledVector(_v.normalize(), 0.6 * dist);
+      }
+      pose.pos.lerpVectors(_a, _b, k2); pose.tgt.lerpVectors(_ta, _tb, k2);
+      pose.explode = (A.x || 0) * (1 - k);
+      pose.side = A.side;
+      if (A.kind === 'orbit' && A.work === JUKEBOX && A.last) pose.cargo = k;
+    } else {
+      beatPose(B, _b, _tb);
+      _v.subVectors(_tb, _b).normalize();
+      const push = B.set === 'deck' ? 1.6 : 7;
+      pose.pos.copy(_b).addScaledVector(_v, -push * k2);
+      pose.tgt.copy(_tb);
+      if (B.set === 'deck' && B.kind === 'orbit') bayLimit(pose.pos, pose.tgt, WORKS[B.work].bay);
+      pose.explode = (B.x || 0) * (1 - k);
+      pose.side = B.side;
+    }
+    pose.flash = Math.min(1, Math.pow(k / 0.95, 2.4));     // 切景前後 |u-0.5|<0.025 維持全白
+    pose.warp = Math.pow(k, 1.2);
+    pose.set = u < 0.5 ? A.set : B.set;
+    pose.moodK = u < 0.5 ? 0 : 1;
+    flashColor(B, pose.flashCol);
   } else {
+    // 其他（同場景、不同種類的拍子）：一般飛行
     beatPose(A, _a, _ta); beatPose(B, _b, _tb);
     pose.pos.lerpVectors(_a, _b, e);
     pose.pos.y += Math.sin(Math.PI * e) * Math.min(5, _a.distanceTo(_b) * 0.1);
     pose.tgt.lerpVectors(_ta, _tb, smooth(clamp(u * 1.35, 0, 1)));
-    pose.warp = Math.pow(Math.sin(Math.PI * u), 1.3);          // 作品之間的飛行段 → 扭曲轉場
-    pose.explode = (u < 0.5 ? (A.x || 0) : (B.x || 0)) * Math.abs(1 - 2 * u) * (i === j ? 1 : 1);
-    if (i === j) pose.explode = A.x || 0;
+    pose.warp = Math.pow(Math.sin(Math.PI * u), 1.3);
+    pose.explode = (u < 0.5 ? (A.x || 0) : (B.x || 0)) * Math.abs(1 - 2 * u);
   }
-  pose.side = lerp(A.side, B.side, e);
-  pose.pos.y = Math.max(pose.pos.y, 0.45);
+  // 場景邊界
+  if (pose.set === 'deck') {
+    pose.pos.x = clamp(pose.pos.x, DECK.x - 5.3, DECK.x + 5.3);
+    pose.pos.y = clamp(pose.pos.y, 0.5, DECK.h - 0.5);
+    pose.pos.z = clamp(pose.pos.z, -DECK.bay * DECK.bays + 0.7, -0.8);
+  } else if (pose.set === 'chamber' || pose.set === 'gallery') {
+    pose.pos.y = Math.max(pose.pos.y, 0.45);
+  }
 }
 
 /* ------------------------------------------------------------------ interaction */
@@ -541,6 +620,7 @@ addEventListener('keydown', (e) => {
 
 function resize() {
   portrait = innerWidth < innerHeight;
+  curves.clear();
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(dpr); renderer.setSize(innerWidth, innerHeight, false);
@@ -553,6 +633,7 @@ addEventListener('resize', resize);
 /* ------------------------------------------------------------------ main loop */
 const clock = new THREE.Clock();
 let p = 0, pPrev = 0, vel = 0, warpS = 0, started = false, intro = 0, lastBeatIdx = -1, frames = 0, acc = 0, lastChapter = null, lastActive = null;
+let skyPhase = 0, lastScrim = -1, curSet = 'storm', prevSet = 'storm', flashHold = 0;
 const root = document.documentElement;
 const hud = $('#hud'), hudNo = $('#hud-no'), hudTitle = $('#hud-title');
 $('#hud-total').textContent = String(works.length).padStart(2, '0');
@@ -589,6 +670,35 @@ function updatePanels() {
   }
 }
 
+// 每格套用目前的氛圍（A → B 依 pose.moodK 混合）
+function applyMood(dt) {
+  mixMood(M, moodOf(pose.moodA), moodOf(pose.moodB), pose.moodK);
+  const fl = sets.state.flash;
+  scene.background.copy(M.bg);
+  scene.fog.color.copy(M.fog); scene.fog.density = M.fogD;
+  hemi.color.copy(M.hemiSky); hemi.groundColor.copy(M.hemiGnd);
+  let flashI = 0;
+  if (curSet === 'storm') flashI = fl * 2.2;
+  else if (curSet === 'deck' && camera.position.z > -DECK.bay) flashI = fl * 2.2 * 0.6;     // 駕駛艙：擋風玻璃外的閃電
+  hemi.intensity = M.hemiI + flashI;
+  key.color.copy(M.keyCol); key.intensity = M.keyI;
+  key.target.position.copy(camTgt); key.position.copy(camTgt).add(M.keyDir);
+  scene.environmentIntensity = M.env;
+  renderer.toneMappingExposure = M.expo;
+  bloom.strength = M.bloomS; bloom.threshold = M.bloomT;
+  const SU = sets.sky.U, skyOn = M.sky > 0.5;
+  SU.uTop.value.copy(M.skyTop); SU.uHor.value.copy(M.skyHor); SU.uCloud.value.copy(M.skyCloud); SU.uSunCol.value.copy(M.sunCol);
+  SU.uSun.value.copy(M.sunDir); SU.uAmt.value = M.skyAmt; SU.uSunAmt.value = M.sunAmt;
+  skyPhase += dt * M.skySpeed * 0.05; SU.uPhase.value = skyPhase;
+  SU.uFlash.value = skyOn && curSet === 'storm' ? fl : 0;
+  sets.sky.mesh.visible = skyOn;
+  sets.sky.mesh.position.copy(camera.position);
+  stars.visible = M.stars > 0.5;
+  stars.position.copy(camera.position);
+  const sc = Math.round(M.scrim * 100) / 100;
+  if (sc !== lastScrim) { root.style.setProperty('--scrim', sc); lastScrim = sc; }
+}
+
 function frame() {
   requestAnimationFrame(frame);
   step(Math.min(clock.getDelta(), 0.05));
@@ -596,7 +706,7 @@ function frame() {
 function step(dt) {
   const t = clock.elapsedTime;
   timeU.value = t;
-  if (!started) { renderer.render(scene, camera); return; }
+  if (!started || !sets) { renderer.render(scene, camera); return; }
   intro = Math.min(1, intro + dt / 2.8);
   const ie = 1 - Math.pow(1 - intro, 3);
 
@@ -606,22 +716,25 @@ function step(dt) {
   const uVel = reduceMotion ? 0 : clamp(vel * 0.3, -1, 1);
   const bi = clamp(Math.round(p), 0, N - 1);
   curBeat = beats[bi];
-  const finale = curBeat.kind === 'free';
   inGallery = curBeat.kind === 'pan';
   if (curBeat.kind === 'orbit') activeWork = works[curBeat.work];
 
   if (bi !== lastBeatIdx) {
     lastBeatIdx = bi;
     root.style.setProperty('--accent', curBeat.kind === 'orbit' ? activeWork.accent : '#ecebe6');
-    hudNo.textContent = activeWork.no; hudTitle.textContent = activeWork.title;
+    hudNo.textContent = activeWork.no; hudTitle.textContent = `${activeWork.scene}｜${activeWork.title}`;
     hud.classList.toggle('hide', curBeat.kind !== 'orbit');
-    marquee.set(`${activeWork.no} ${activeWork.en} — ${activeWork.title} — `);
+    marquee.set(`${activeWork.no} ${activeWork.en} — ${activeWork.scene} — `);
     if (!inGallery) { hovered = null; canvas.classList.remove('pointing'); }
     if (curBeat.chapter !== lastChapter) { lastChapter = curBeat.chapter; chapters.forEach((c) => c.btn.classList.toggle('on', c.id === lastChapter)); }
   }
 
   // camera
   computePose(p);
+  curSet = pose.set;
+  // 換場景的第一格一定是全白（每格 p 跨很大時，閃光峰值可能剛好落在兩格之間）
+  if (curSet !== prevSet) { flashHold = 1; prevSet = curSet; }
+  flashHold = Math.max(0, flashHold - dt * 6);
   if (intro < 1) { _v.copy(pose.pos).sub(pose.tgt).applyAxisAngle(THREE.Object3D.DEFAULT_UP, (1 - ie) * -1.1).multiplyScalar(1 + (1 - ie) * 1.1); pose.pos.copy(pose.tgt).add(_v); }
   const warpT = reduceMotion ? 0 : pose.warp * (0.4 + 0.6 * clamp(Math.abs(vel) * 0.9, 0, 1)) + (1 - ie) * 0.9;
   warpS = lerp(warpS, warpT, 1 - Math.exp(-dt * 7));
@@ -639,31 +752,31 @@ function step(dt) {
   const W = innerWidth, H = innerHeight;
   if (W > 820) camera.setViewOffset(W, H, -pose.side * W * 0.17, 0, W, H);
   else camera.setViewOffset(W, H, 0, Math.abs(pose.side) * H * 0.13, W, H);
+  camera.updateMatrixWorld();
+
+  // sets：只顯示目前所在的場景；場景動畫在鏡頭定位之後更新
+  for (const name in sets.groups) sets.groups[name].visible = name === curSet;
+  sets.state.cargo = pose.cargo;
+  sets.update(dt, t, camera);
+  applyMood(dt);
 
   // post fx
   glitch = Math.max(0, glitch - dt * 2.6);
   mouseSpeed = Math.max(0, mouseSpeed - dt * 2.2);
   WU.uVel.value = uVel; WU.uWarp.value = warpS; WU.uGlitch.value = reduceMotion ? 0 : glitch; WU.uTime.value = t;
   WU.uMouse.value.copy(mouseUv); WU.uMouseV.value = reduceMotion ? 0 : mouseSpeed;
+  WU.uFlash.value = Math.max(pose.flash, flashHold); WU.uFlashCol.value.copy(pose.flashCol);
 
-  // lights + ground follow the active stage
-  const sp = activeWork.stage.position, r = activeWork.pad;
-  rimTarget.set(sp.x - r * 1.5, activeWork.baseY + r * 1.4 + 1, sp.z - r * 1.9);
-  fillTarget.set(sp.x + r * 1.6, activeWork.baseY + r * 0.6 + 0.5, sp.z + r * 2.2);
+  // rim / fill lights follow the work in the current set
+  const lw = activeWork.set === curSet ? activeWork : (works.find((w) => w.set === curSet) || activeWork);
+  const sp = lw.stage.position, r = lw.pad, hy = sp.y + lw.baseY;
+  rimTarget.set(sp.x - r * 1.5, hy + r * 1.4 + 1, sp.z - r * 1.9);
+  fillTarget.set(sp.x + r * 1.6, hy + r * 0.6 + 0.5, sp.z + r * 2.2);
   const lk = 1 - Math.exp(-dt * 3);
-  rim.position.lerp(rimTarget, lk); fill.position.lerp(fillTarget, lk);
-  accentNow.lerp(activeWork.accentColor, lk); rim.color.copy(accentNow);
-  rim.intensity = (finale ? 0 : 22) * r * r + 18; fill.intensity = 4.5 * r * r;
-  key.target.position.copy(camTgt); key.position.copy(camTgt).add(_v.set(7, 11, 9));
-  scene.fog.density = lerp(scene.fog.density, finale ? 0.0035 : 0.0105, lk);
-  groundMat.uniforms.uCam.value.copy(camera.position);
-  groundMat.uniforms.uPos.value.set(sp.x, sp.z);
-  groundMat.uniforms.uColor.value.copy(accentNow);
-  groundMat.uniforms.uTime.value = t;
-  sky.position.copy(camera.position);
-  sky.material.uniforms.uColor.value.copy(accentNow); sky.material.uniforms.uTime.value = t;
-  stars.position.copy(camera.position).setY(0);
-  dust.rotation.y = Math.sin(t * 0.05) * 0.02; dust.position.y = Math.sin(t * 0.2) * 0.3;
+  if (rim.position.distanceTo(rimTarget) > 60) rim.position.copy(rimTarget); else rim.position.lerp(rimTarget, lk);
+  if (fill.position.distanceTo(fillTarget) > 60) fill.position.copy(fillTarget); else fill.position.lerp(fillTarget, lk);
+  accentNow.lerp(lw.accentColor, lk); rim.color.copy(accentNow);
+  rim.intensity = (22 * r * r + 18) * M.rimK; fill.intensity = 4.5 * r * r * M.fillK;
 
   // 抵達新作品：先以線框（或上色）出現，再掃描成目標模式
   const orbiting = curBeat.kind === 'orbit';
@@ -680,10 +793,9 @@ function step(dt) {
   // works
   for (const w of works) {
     const isActive = w === activeNow;
-    const near = finale || isActive || w.stage.position.distanceTo(camera.position) < 44;
-    w.holder.visible = near && w.loaded;
-    w.amp = lerp(w.amp, isActive ? 1 : finale ? 5 : 0.3, lk);
-    w.beamMat.uniforms.uAmp.value = w.amp;
+    const shown = w.set === curSet;
+    w.stage.visible = shown;
+    w.holder.visible = w.loaded;
     if (!w.loaded) continue;
     if (isActive) { if (intro > 0.25) scanTo(w, userMode === 'auto' ? curBeat.mode : userMode); }
     else if (w.mode !== 'shaded' || w.scan) instantMode(w, 'shaded');
@@ -698,9 +810,13 @@ function step(dt) {
     if (isActive) { if (!drag) { w.userYaw += w.yawVel; w.yawVel *= 0.94; } }
     else { w.yawVel = 0; w.userYaw = lerp(w.userYaw, Math.round(w.userYaw / (Math.PI * 2)) * Math.PI * 2, lk); }
     w.holder.rotation.y = w.yaw + w.userYaw;
-    if (!near) continue;
+    if (!shown) continue;
     w.holder.scale.setScalar(1 - w.uWobble.value * 0.07);
-    if (w.lift > 0) { w.holder.position.y = w.baseY + Math.sin(t * 0.8 + w.i) * 0.09; w.holder.rotation.z = Math.sin(t * 0.5 + w.i) * 0.012; }
+    if (w.flying) {
+      w.holder.position.y = w.baseY + Math.sin(t * 0.8 + w.i) * 0.09;
+      if (w.id === 'ship') { w.holder.rotation.z = Math.sin(t * 0.5) * 0.05; w.holder.rotation.x = Math.sin(t * 0.37) * 0.02; }
+      else w.holder.rotation.z = Math.sin(t * 0.5 + w.i) * 0.012;
+    }
     for (const s of w.spin) { s.rotation.z += dt * 13; s.position.copy(s.userData.base).addScaledVector(s.userData.dir, w.uExplode.value); }
     for (const pm of w.pulse) {
       let k = 1;
@@ -719,8 +835,7 @@ function step(dt) {
   }
 
   // gallery：隨轉動速度彎曲、hover 漣漪、晨昏夜切換
-  galleryGroup.visible = finale || GC.distanceTo(camera.position) < 60;
-  if (galleryGroup.visible) {
+  if (curSet === 'gallery') {
     const gv = inGallery ? clamp(vel * 0.42, -0.9, 0.9) : 0;
     for (const it of GALLERY.items) {
       if (!it.group) continue;
@@ -766,8 +881,19 @@ function snap(b, n = 30, mode, opts = {}) {
   for (let i = 0; i < n; i++) { if (opts.vel) { vel = opts.vel; pPrev = p - opts.vel * 0.05; } if (opts.hold) glitch = opts.hold; step(0.05); }
   return canvas.toDataURL('image/jpeg', 0.82);
 }
-if (new URLSearchParams(location.search).has('debug')) window.__site = { beats, works, jump, camera, scene, renderer, pose, snap, step, WU,
+if (new URLSearchParams(location.search).has('debug')) window.__site = { beats, works, get sets() { return sets; }, jump, camera, scene, renderer, pose, snap, step, WU,
   setP(v) { p = v; pPrev = v; scrollTo(0, v * unit); }, setQuality(b, d) { bloom.enabled = b; if (d) { dpr = d; resize(); } },
   get p() { return p; }, get fps() { return frames ? 1 / (acc / frames) : 0; }, get quality() { return { dpr, bloom: bloom.enabled }; } };
+
+/* ------------------------------------------------------------------ boot：字型 → 場景 → 模型 */
+async function boot() {
+  const fontLoads = document.fonts
+    ? Promise.all(['800 64px Unbounded', '600 22px "JetBrains Mono"', '900 64px "Noto Sans TC"'].map((f) => document.fonts.load(f).catch(() => null))).then(() => document.fonts.ready)
+    : Promise.resolve();
+  await Promise.race([fontLoads, new Promise((r) => setTimeout(r, 2500))]);
+  sets = buildSets(scene);
+  sets.addGalleryFloor(GC.x, GC.z, GALLERY.radius);
+  await loadAll();
+}
 frame();
-loadAll().catch((e) => { console.error(e); $('#loader-text').textContent = '載入失敗，請重新整理頁面'; });
+boot().catch((e) => { console.error(e); $('#loader-text').textContent = '載入失敗，請重新整理頁面'; });
