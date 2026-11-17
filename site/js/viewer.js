@@ -9,6 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
 const DRACO_PATH = 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/gltf/';
+const EXPLODE_GAIN = 1.6;                          // 檢視器裡的拆解幅度比舊場景大一些，零件才分得開
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function webglOK() {
@@ -153,9 +154,9 @@ export async function createViewer(host, { url, accent = '#ffffff', explode = 0,
     if (Math.abs(exTarget - exNow) > 1e-4) {
       exNow += (exTarget - exNow) * (reduced ? 1 : 1 - Math.exp(-dt * 8));
       if (Math.abs(exTarget - exNow) <= 1e-4) exNow = exTarget;
-      uExplode.value = exNow * explode;
+      uExplode.value = exNow * explode * EXPLODE_GAIN;
       for (const s of spin) s.position.copy(s.userData.base).addScaledVector(s.userData.dir, uExplode.value);
-      const k = 1 + exNow * explode * 0.7;
+      const k = 1 + exNow * explode * EXPLODE_GAIN * 0.6;
       const off = camera.position.clone().sub(controls.target);
       camera.position.copy(controls.target).addScaledVector(off, k / zoomK);
       zoomK = k;

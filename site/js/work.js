@@ -226,16 +226,15 @@ function initTurntable(w) {
     timer = setInterval(() => { k++; show(k); if (k >= N || touched) { clearInterval(timer); if (!touched) show(0); } }, 140);
   };
 
-  // 接近畫面時才開始預載
-  onceVisible(el, () => {
-    for (let k = 0; k < N; k++) {
-      const im = new Image();
-      im.decoding = 'async';
-      im.onload = () => { frames[k] = im; loaded++; finished++; el.classList.toggle('is-ready', loaded === N); tryPlay(); };
-      im.onerror = () => { finished++; };
-      im.src = src(k);
-    }
-  }, '400px');
+  // 接近畫面時才開始預載；第 0 格不存在就不再要其他 23 格
+  const load = (k, then) => {
+    const im = new Image();
+    im.decoding = 'async';
+    im.onload = () => { frames[k] = im; loaded++; finished++; el.classList.toggle('is-ready', loaded === N); then?.(); tryPlay(); };
+    im.onerror = () => { finished++; };
+    im.src = src(k);
+  };
+  onceVisible(el, () => load(0, () => { for (let k = 1; k < N; k++) load(k); }), '400px');
   if ('IntersectionObserver' in window) {
     new IntersectionObserver((es) => { inView = es.some((e) => e.isIntersecting); tryPlay(); }, { threshold: 0.6 }).observe(el);
   }

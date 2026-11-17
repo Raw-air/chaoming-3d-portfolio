@@ -31,11 +31,6 @@ export function bindImage(img, onState) {
 }
 export const bindMedia = (root = document) => $$('.media img', root).forEach((img) => bindImage(img));
 
-// 不放進 DOM 的探測：檔案存在才 resolve(true)
-export function probe(src) {
-  return new Promise((res) => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
-}
-
 export async function fetchJSON(url) {
   try { const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) return null; return await r.json(); } catch { return null; }
 }

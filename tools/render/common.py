@@ -52,6 +52,7 @@ def parse_args(argv=None):
     p.add_argument("--out", default="", help="output dir (default site/renders/<key>)")
     p.add_argument("--samples", type=int, default=0, help="override samples for every still")
     p.add_argument("--no-json", action="store_true")
+    p.add_argument("--turn-samples", type=int, default=0, help="override EEVEE samples for the turntable")
     a = p.parse_args(argv)
     a.only = [s.strip() for s in a.only.split(",") if s.strip()]
     return a
@@ -153,7 +154,7 @@ def setup_eevee(samples):
         pass
 
 
-def color_look(look="AgX - Punchy", exposure=0.0, gamma=1.0):
+def color_look(look="AgX - High Contrast", exposure=0.0, gamma=1.0):
     vs = bpy.context.scene.view_settings
     vs.view_transform = "AgX"
     for name in (look, "AgX - Medium High Contrast", "AgX - High Contrast", "None"):
@@ -294,14 +295,14 @@ def bump(nt, height, strength=0.3, distance=0.01, normal=None):
 
 def edge_mask(nt, radius=0.012, lo=0.995, hi=0.93):
     """Convex/concave edge mask from the Bevel node (Cycles; EEVEE returns ~0 = no wear)."""
-    bev = N(nt, "Bevel", {"Radius": radius}, samples=4)
+    bev = N(nt, "Bevel", {"Radius": radius}, samples=2)
     geo = N(nt, "NewGeometry")
     d = vmath(nt, "DOT_PRODUCT", bev.outputs[0], geo.outputs["Normal"], out=1)
     return maprange(nt, d, lo, hi, 0.0, 1.0)
 
 
 def cavity_mask(nt, distance=0.25, contrast=1.5):
-    ao = N(nt, "AmbientOcclusion", {"Distance": distance}, samples=8, only_local=True)
+    ao = N(nt, "AmbientOcclusion", {"Distance": distance}, samples=2, only_local=True)
     inv = mathn(nt, "SUBTRACT", 1.0, ao.outputs["AO"], clamp=True)
     return mathn(nt, "POWER", inv, 1.0 / contrast)
 
@@ -647,12 +648,14 @@ class Model:
         return next((o for o in self.objs if o.name == name), None)
 
 
-def load(key, size=None, scale=None, rot_z=0.0, location=(0, 0, 0), ground=None):
+def load(key, size=None, scale=None, rot_z=0.0, location=(0, 0, 0), ground=None, prep=None):
     """Import model `key`, palette materials, bake: rotate about Z (deg), centre XY, base on z=0,
     then scale (longest side = size, or uniform scale). ground: optional list of object names whose
     lowest vertex defines the floor contact (e.g. landing gear) instead of the overall minimum.
     All objects are parented to an Empty `pivot` at `location` (rotate it for turntables)."""
     objs = ML.load_model(key)
+    if prep:
+        prep(objs)
     if rot_z:
         ML.transform(objs, Matrix.Rotation(math.radians(rot_z), 4, "Z"))
     mn, mx = ML.bounds(objs)
@@ -668,7 +671,6 @@ def load(key, size=None, scale=None, rot_z=0.0, location=(0, 0, 0), ground=None)
     for o in objs:
         o.parent = pivot
         tag(o, "model")
-        o.data.shade_smooth() if False else None
     bpy.context.view_layer.update()
     log(f"model {key}: {len(objs)} objs, scale {s:.3f}, dims {[round(x, 2) for x in (mx - mn) * s]}")
     return Model(key, objs, pivot)
@@ -705,12 +707,6 @@ def box(name, size, loc=(0, 0, 0), rot=(0, 0, 0), mat=None, bevel=0.02, role="se
 
 
 def _autosmooth(o, angle=35):
-    try:
-        o.data.shade_smooth()
-        md = o.modifiers.new("smooth", "NODES")  # placeholder replaced below if the asset exists
-        o.modifiers.remove(md)
-    except Exception:
-        pass
     try:
         with bpy.context.temp_override(object=o, active_object=o, selected_objects=[o], selected_editable_objects=[o]):
             bpy.ops.object.shade_smooth_by_angle(angle=math.radians(angle))
@@ -975,25 +971,26 @@ def _is_emitter(m):
     return m is not None and m.get("recipe") in ("emissive", "screen")
 
 
-def clay_pass(model_color="#bdb8ae", set_color="#4a4b4d"):
+def clay_pass(model_color="#bdb8ae", set_color="#4a4b4d", tag_="CLAY"):
     """Swap: model -> light clay, set -> dark clay; emitters, lights, sky and haze untouched."""
-    cm = material("clay", "CLAY_model", color=model_color, rough=0.55)
-    cs = material("clay", "CLAY_set", color=set_color, rough=0.7)
+    cm = material("clay", f"{tag_}_model_{model_color}", color=model_color, rough=0.55)
+    cs = material("clay", f"{tag_}_set_{set_color}", color=set_color, rough=0.7)
     objs = [o for o in bpy.context.scene.objects if o.get("role") in ("model", "set")]
     return _swap_materials(objs, lambda o, m: None if _is_emitter(m) else (cm if o.get("role") == "model" else cs))
 
 
-def wire_pass(model, thickness=0.006, wire_color="#d8f3ff", wire_strength=3.0, body_color="#14171b",
-              set_color="#2b2c2e"):
+def wire_pass(model, thickness=0.006, wire_color="#d8f3ff", wire_strength=2.0, body_color="#bdb8ae",
+              set_color="#4a4b4d"):
     """True-topology wireframe: a Wireframe-modifier copy of every model mesh (uses the mesh's real edges, so
-    quads stay quads — the Cycles Wireframe *node* would show the triangulation). Body = dark matte."""
-    saved = clay_pass(body_color, set_color)
+    quads stay quads — the Cycles Wireframe *node* would show the triangulation). Body = clay.
+    (A dark body_color such as "#14171b" gives a blueprint look.)"""
+    saved = clay_pass(body_color, set_color, "WIREBODY")
     wm = material("emissive", "WIRE_mat", color=wire_color, strength=wire_strength, base=wire_color)
     copies = []
     for o in model.objs:
         if o.type != "MESH":
             continue
-        c = o.copy(); c.data = o.data  # share mesh; modifier output replaces it
+        c = o.copy()
         link(c); c.parent = o.parent; c.matrix_world = o.matrix_world.copy()
         md = c.modifiers.new("wire", "WIREFRAME")
         md.thickness = thickness; md.use_replace = True; md.use_even_offset = True; md.offset = 0.0
@@ -1018,9 +1015,14 @@ def render_turntable(args, model, cam, out, frames=24, mode="model", center=(0, 
     around `center` (keeps height/distance)."""
     sc = bpy.context.scene
     w, h, spp = QUALITY[args.quality]["turn"]
-    setup_eevee(spp if args.quality == "final" else 16)
+    spp = args.turn_samples or spp
+    setup_eevee(spp)
+    cam = dict(cam); exposure = cam.pop("exposure", 0.0); cam.pop("center", None)
     c = camera("CAM_turn", **cam); sc.camera = c
-    color_look(exposure=cam.get("exposure", 0.0) if isinstance(cam, dict) and "exposure" in cam else 0.0)
+    color_look(exposure=exposure)
+    hidden = [o for o in sc.objects if o.get("hide_turn")]
+    for o in hidden:
+        o.hide_render = True
     rot0 = model.pivot.rotation_euler.z
     base_loc = Vector(c.location); ctr = Vector(center)
     tgt = cam.get("target")
@@ -1038,6 +1040,8 @@ def render_turntable(args, model, cam, out, frames=24, mode="model", center=(0, 
         bpy.ops.render.render(write_still=True)
         log(f"TIME turn {i:02d} {args.quality} {w}x{h} eevee {spp}spp: {time.time() - t:.1f}s")
     model.pivot.rotation_euler.z = rot0
+    for o in hidden:
+        o.hide_render = False
     log(f"TIME turn total {time.time() - t0:.1f}s")
 
 
@@ -1062,7 +1066,7 @@ def run(args, key, model, shots, clay_wire_of="s1", turn=None, turn_mode="model"
             _restore(saved)
         if wanted(args, "wire"):
             size = max(model.bounds[1] - model.bounds[0])
-            st = wire_pass(model, thickness=wire_thickness or size * 0.0006)
+            st = wire_pass(model, thickness=wire_thickness or size * 0.0005)
             sh = Shot("wire", ref.cam, kind="still", exposure=ref.exposure)
             times["wire"] = render_shot(sh, args, os.path.join(out, "wire.jpg"))
             end_wire(st)
