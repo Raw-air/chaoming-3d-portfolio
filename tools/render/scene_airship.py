@@ -733,6 +733,30 @@ def haze_dome(name, center, radii, density, color, anisotropy=0.5):
 
 haze_dome("haze", (0, 0, -60), (1700, 1700, 520), 0.00055, "#dde4ec", 0.5)
 
+
+def _haze_density(d):
+    """Set the haze dome's density, return the previous value (s2 looks toward the sun: the full haze washes it out)."""
+    m = bpy.data.materials.get("haze_vol")
+    for n in (m.node_tree.nodes if m else []):
+        if n.type == "PRINCIPLED_VOLUME":
+            old = n.inputs["Density"].default_value
+            n.inputs["Density"].default_value = d
+            return old
+    return None
+
+
+_s2 = {}
+
+
+def _s2_setup():
+    _s2["d"] = _haze_density(0.00010)
+
+
+def _s2_teardown():
+    if _s2.get("d") is not None:
+        _haze_density(_s2["d"])
+
+
 # ====================================================================== shots
 SHOTS = [
     C.Shot("hero", dict(loc=(-18.2, -31.0, 10.9), target=(-3.0, 0.0, 17.0), lens=21, fstop=5.6, focus=(-3.0, -2.0, 12.0)),
@@ -742,7 +766,8 @@ SHOTS = [
     C.Shot("s1", dict(loc=(-44.0, 48.0, 18.0), target=(-0.5, 0.5, 16.5), lens=42),
            "三分之四前視：補丁氣囊、纜繩網與木造船身。"),
     C.Shot("s2", dict(loc=(36.0, -46.0, 23.0), target=(0.0, -4.0, 15.0), lens=35),
-           "後側俯視：船尾的魚鰭尾翼與甲板，後方是碼頭棧橋與雲海。"),
+           "後側俯視：船尾的魚鰭尾翼與甲板，後方是碼頭棧橋與雲海。",
+           exposure=-1.0, setup=_s2_setup, teardown=_s2_teardown),
     C.Shot("s3", dict(loc=(-5.5, -10.0, 16.0), target=(0.5, -3.4, 11.8), lens=42, fstop=2.8, focus=(0.5, -3.65, 12.2)),
            "甲板特寫：船尾的舵輪、地籠與木桶。"),
     C.Shot("s4", dict(loc=(-13.0, -27.0, 21.0), target=(-6.5, -14.0, 25.0), lens=45, fstop=2.8, focus=(-6.2, -15.0, 24.5)),
@@ -757,7 +782,8 @@ def render_wire():
     """Same as C.wire_pass but with use_even_offset off: on this model's thin/degenerate faces the even-offset
     corners shoot out as long spikes across the frame."""
     ref = next(s for s in SHOTS if s.name == "s1")
-    saved = C.clay_pass("#bdb8ae", "#4a4b4d", "WIREBODY")
+    # dark body: against this bright sky, pale lines on a pale clay body were hard to read
+    saved = C.clay_pass("#1c2229", "#4a4b4d", "WIREBODY")
     wm = C.material("emissive", "WIRE_mat", color="#d8f3ff", strength=2.0, base="#d8f3ff")
     th = max(model.bounds[1] - model.bounds[0]) * 0.0005
     copies = []

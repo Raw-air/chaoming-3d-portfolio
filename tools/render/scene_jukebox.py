@@ -40,19 +40,22 @@ def dome_mat(name, strength=1.1):
     s = C.N(nt, "SeparateXYZ", {"Vector": v})
     x = s.outputs[0]; zr = M("SUBTRACT", s.outputs[2], DOME_Z0 - 0.02)
     ang = M("ARCTAN2", x, zr)                        # -pi/2..pi/2 across the arch
-    rays = M("GREATER_THAN", M("FRACT", M("MULTIPLY", ang, 18.0 / math.pi)), 0.5)
     rad = M("SQRT", M("ADD", M("MULTIPLY", x, x), M("MULTIPLY", zr, zr)))
-    rr = C.maprange(nt, rad, 0.05, 0.38)
-    c = C.mix(nt, rr, "#ffa020", "#ff2050")
-    c = C.mix(nt, M("MULTIPLY", rays, 0.3), c, "#ffd27a")
-    hub = C.maprange(nt, rad, 0.075, 0.065)          # bright hub at the bottom centre
-    c = C.mix(nt, hub, c, "#fff6e0")
-    ring = M("MULTIPLY", C.maprange(nt, M("ABSOLUTE", M("SUBTRACT", rad, 0.2)), 0.008, 0.003), 0.8)
-    c = C.mix(nt, ring, c, "#ffffff")
-    k = M("ADD", 0.7, M("MULTIPLY", hub, 0.8))
+    # moulded ribs fanning out from the hub: a rounded profile (used for bump and for light leaking through
+    # the thinner rib valleys)
+    rib = M("ABSOLUTE", M("SINE", M("MULTIPLY", ang, 15.0)))
+    valley = M("SUBTRACT", 1.0, rib)
+    rr = C.maprange(nt, rad, 0.04, 0.36)
+    c = C.mix(nt, C.maprange(nt, rad, 0.03, 0.14), "#fff1c8", "#ffa424")
+    c = C.mix(nt, C.maprange(nt, rad, 0.14, 0.36), c, "#ff2a4a")
+    hot = C.maprange(nt, rad, 0.0, 0.34, 3.2, 0.45, "SMOOTHSTEP")   # hot centre with falloff
+    k = M("MULTIPLY", hot, M("ADD", 0.6, M("MULTIPLY", valley, 0.55)))
+    ring = M("MULTIPLY", C.maprange(nt, M("ABSOLUTE", M("SUBTRACT", rad, 0.21)), 0.01, 0.004), 0.5)
+    k = M("ADD", k, ring)
     n = C.noise(nt, v, 30.0, 4, 0.6)
-    C.principled(nt, out, color="#1a0d08", rough=C.maprange(nt, n, 0.4, 0.7, 0.03, 0.12), coat=1.0, coat_rough=0.02,
-                 emit=c, emit_strength=M("MULTIPLY", k, strength))
+    nrm = C.bump(nt, M("ADD", M("MULTIPLY", rib, 1.0), M("MULTIPLY", n, 0.05)), 0.45, 0.004)
+    C.principled(nt, out, color="#3a1608", rough=0.35, normal=nrm, coat=1.0, coat_rough=0.015,
+                 sss=0.0, emit=c, emit_strength=M("MULTIPLY", k, strength))
     m["recipe"] = "emissive"
     return m
 
@@ -82,14 +85,23 @@ def cloth_mat(name, strength=0.6):
     M, wn = _ops(nt)
     v = C.coords(nt)
     s = C.N(nt, "SeparateXYZ", {"Vector": v})
-    a = C.N(nt, "TexWave", {"Vector": v, "Scale": 260.0}, wave_type="BANDS", bands_direction="X").outputs["Factor"]
-    b = C.N(nt, "TexWave", {"Vector": v, "Scale": 260.0}, wave_type="BANDS", bands_direction="Z").outputs["Factor"]
-    weave = M("MULTIPLY", a, b)
-    cen = M("ADD", M("MULTIPLY", s.outputs[0], s.outputs[0]), M("MULTIPLY", M("SUBTRACT", s.outputs[2], 0.55), M("SUBTRACT", s.outputs[2], 0.55)))
-    glow = C.maprange(nt, cen, 0.0, 0.16, 1.2, 0.35)
-    c = C.mix(nt, weave, "#5a1410", "#c0502a")
-    C.principled(nt, out, color=c, rough=0.85, sheen=0.5, emit=c,
-                 emit_strength=M("MULTIPLY", glow, strength), normal=C.bump(nt, weave, 0.3, 0.0008))
+    p = 0.0055                                        # thread pitch (coarse grille cloth)
+    gx = M("DIVIDE", s.outputs[0], p); gz = M("DIVIDE", s.outputs[2], p)
+    wx = M("MULTIPLY", M("ABSOLUTE", M("SUBTRACT", M("FRACT", gx), 0.5)), 2.0)   # 0 thread centre .. 1 edge
+    wz = M("MULTIPLY", M("ABSOLUTE", M("SUBTRACT", M("FRACT", gz), 0.5)), 2.0)
+    par = M("MODULO", M("ABSOLUTE", M("ADD", M("FLOOR", gx), M("FLOOR", gz))), 2.0)   # over / under
+    h = C.mixf(nt, par, M("SUBTRACT", 1.0, M("MULTIPLY", wx, wx)), M("SUBTRACT", 1.0, M("MULTIPLY", wz, wz)))
+    holes = C.maprange(nt, M("MULTIPLY", wx, wz), 0.45, 0.8)                     # light leaks between threads
+    gold = M("LESS_THAN", M("MODULO", M("ABSOLUTE", M("FLOOR", gx)), 5.0), 0.5)   # every 5th warp: metallic thread
+    gold = M("MULTIPLY", gold, M("SUBTRACT", 1.0, par))
+    cen = M("ADD", M("MULTIPLY", s.outputs[0], s.outputs[0]), M("MULTIPLY", M("SUBTRACT", s.outputs[2], 0.45), M("SUBTRACT", s.outputs[2], 0.45)))
+    glow = C.maprange(nt, cen, 0.0, 0.14, 1.3, 0.4)
+    c = C.mix(nt, C.maprange(nt, h, 0.2, 1.0), "#140705", "#3a160e")
+    c = C.mix(nt, gold, c, "#b8904a")
+    em = C.mix(nt, glow, "#ff3a20", "#ff9a3a")
+    C.principled(nt, out, color=c, metal=M("MULTIPLY", gold, 0.9), rough=C.mixf(nt, gold, 0.8, 0.35), sheen=0.6,
+                 sheen_rough=0.4, emit=em, emit_strength=M("MULTIPLY", M("MULTIPLY", holes, glow), strength * 6.0),
+                 normal=C.bump(nt, h, 0.5, 0.0015))
     m["recipe"] = "emissive"
     return m
 
@@ -181,8 +193,9 @@ _g = model.by_name("平面")
 _g.data.materials[0] = grille_mat("jb_grille")
 _g.data.materials[0]["palette"] = "chrome"
 # the internal light the glowing parts give off (parented: spins with the model)
-L_IN = [C.area("jb_front_glow", (0, -0.45, 0.6), (0, -3.0, 0.3), 10, "#ff9a50", 0.45, 0.7),
-        C.area("jb_dome_glow", (0, -0.45, 1.3), (0, -3.0, 1.0), 6, "#ffb070", 0.55, 0.3)]
+L_IN = [C.area("jb_front_glow", (0, -0.45, 0.6), (0, -3.0, 0.3), 35, "#ff7a48", 0.45, 0.7),
+        C.area("jb_floor_spill", (0, -0.42, 0.22), (0, -1.3, 0.0), 22, "#ff5a3a", 0.4, 0.15),
+        C.area("jb_dome_glow", (0, -0.45, 1.3), (0, -3.0, 1.0), 18, "#ffa060", 0.55, 0.3)]
 for o in L_IN:
     o.parent = model.pivot
 
@@ -218,7 +231,7 @@ def checker(name, size=0.3, a="#e6e0d0", b="#121212"):
     return m
 
 
-def subway_tile(name, plane="XZ", color="#7fae96", grout="#3d3a32"):
+def subway_tile(name, plane="XZ", color="#5d8a74", grout="#2d2a24"):
     """Glazed subway tiles via the Brick texture on (x|y, z); crazing/grime toward the bottom, glossy glaze."""
     m, nt, out = C.new_mat(name)
     M, wn = _ops(nt)
@@ -285,7 +298,7 @@ def dusk_card(name):
     win = M("MULTIPLY", win, M("GREATER_THAN", wn(M("FLOOR", M("DIVIDE", s.outputs[1], 0.18)), M("FLOOR", M("DIVIDE", z, 0.22)), 5.0), 0.6))
     c = C.mix(nt, bld, c, "#0a0c18")
     c = C.mix(nt, M("MULTIPLY", bld, win), c, "#ffb860")
-    em = C.N(nt, "Emission", {"Strength": 2.2})
+    em = C.N(nt, "Emission", {"Strength": 0.6})
     C._sock_set(em.inputs["Color"], c)
     nt.links.new(em.outputs[0], out.inputs["Surface"])
     return m
@@ -358,7 +371,7 @@ for k in range(nsl):
 C.box("blind_rail", (0.06, WIN_Y1 - WIN_Y0 - 0.04, 0.03), (XL + 0.03, (WIN_Y0 + WIN_Y1) / 2, WIN_Z1 - 0.03),
       mat=M_BLIND, bevel=0.005)
 # neon OPEN sign hanging in the window, facing the street (reads mirrored from inside)
-C.text("neon_open", "OPEN", 0.16, (XL + 0.1, (WIN_Y0 + WIN_Y1) / 2 + 0.25, 1.15), (90, 0, -90), M_NEON_BLUE, C.FONT_LATIN,
+C.text("neon_open", "OPEN", 0.16, (XL + 0.1, (WIN_Y0 + WIN_Y1) / 2 + 0.25, 1.15), (90, 0, 90), M_NEON_BLUE, C.FONT_LATIN,
        extrude=0.006, role="keep")
 sky =C.plane("dusk", (14, 5), (XL - 3.5, -1.0, 1.6), (90, 0, 90), dusk_card("jb_dusk"), role="keep")
 sky.visible_shadow = False
@@ -414,8 +427,8 @@ for k, (px, py, pz) in enumerate(((TB[0], TB[1], 1.75), (-0.35, -0.75, 2.05))):
     C._obj_from_bm(f"pend_cone_{k}", bm, M_GREEN_ENAMEL, (px, py, pz + 0.02), role="set", smooth=True)
     C.cylinder(f"pend_cap_{k}", 0.065, 0.04, (px, py, pz + 0.12), mat=M_GREEN_ENAMEL, segments=24)
     C.cylinder(f"pend_bulb_{k}", 0.045, 0.06, (px, py, pz - 0.06), mat=M_BULB, segments=16, role="keep")
-    C.spot(f"pend_spot_{k}", (px, py, pz - 0.08), (px, py, 0.0), 110 if k == 0 else 35, C.kelvin(2900), 75, 0.6, 0.05)
-    C.point(f"pend_pt_{k}", (px, py, pz - 0.05), 10, C.kelvin(2700), 0.05)
+    C.spot(f"pend_spot_{k}", (px, py, pz - 0.08), (px, py, 0.0), 150 if k == 0 else 6, C.kelvin(2900), 60, 0.5, 0.05)
+    C.point(f"pend_pt_{k}", (px, py, pz - 0.05), 6 if k == 0 else 2, C.kelvin(2700), 0.05)
 
 # neon signs on the back wall over the booth (warm: red + amber), menu board, a wall clock
 C.box("neon_back", (1.3, 0.03, 0.5), ((BX0 + BX1) / 2, BACK - 0.03, 1.72), mat=M_DARKMETAL, bevel=0.01)
@@ -439,14 +452,14 @@ C.box("clock_h", (0.012, 0.004, 0.08), (0.02, BACK - 0.07, 2.03), (0, 35, 0), ma
 C.box("clock_m", (0.008, 0.004, 0.12), (-0.03, BACK - 0.072, 2.04), (0, -40, 0), mat=M_DARKMETAL, bevel=0)
 
 # ---------------------------------------------------------------- lighting
-C.world("#05060a", 1.0)
+C.world("#020306", 1.0)
 # cool dusk light through the window blinds (rim on the jukebox's left side, stripes on the floor)
-C.area("window_sky", (XL - 1.2, (WIN_Y0 + WIN_Y1) / 2 + 0.3, 2.3), (0.0, -0.3, 0.7), 1500, "#6f95ff", 1.6, 1.4)
-C.area("window_fill", (XL - 0.4, (WIN_Y0 + WIN_Y1) / 2, 1.6), (0.5, -1.0, 0.6), 50, "#7a9cff", 1.8, 1.2, spread=120)
+C.area("window_sky", (XL - 1.2, (WIN_Y0 + WIN_Y1) / 2 + 0.6, 2.3), (0.0, 0.35, 1.0), 320, "#6f95ff", 1.2, 1.0)
+
 # warm key on the jukebox front (tungsten, kept above 4000 K so the wood is not orange mush)
-C.area("key_warm", (1.0, -1.6, 2.2), (0.0, -0.1, 0.9), 35, C.kelvin(4200), 0.8)
-C.area("bounce", (0.2, -3.6, 0.9), (0, 0, 0.8), 8, C.kelvin(3800), 2.0)
-C.haze("haze", ((XL + XR) / 2, (BACK + FRONT) / 2, H / 2), (XR - XL - 0.05, BACK - FRONT - 0.05, H - 0.02), 0.006,
+C.area("cab_kick", (1.5, -1.9, 2.4), (0.0, -0.1, 0.9), 14, C.kelvin(4200), 0.5)   # glossy highlights on the walnut
+
+C.haze("haze", ((XL + XR) / 2, (BACK + FRONT) / 2, H / 2), (XR - XL - 0.05, BACK - FRONT - 0.05, H - 0.02), 0.01,
        "#ffeedd", 0.5)
 for nm in ("jb_neon_blue", "jb_bulb"):
     mm = bpy.data.materials.get(nm)
@@ -455,21 +468,42 @@ for nm in ("jb_neon_blue", "jb_bulb"):
 
 # ---------------------------------------------------------------- shots
 SHOTS = [
-    C.Shot("hero", dict(loc=(1.0, -2.45, 0.62), target=(-0.3, 0.0, 0.85), lens=24, fstop=2.8, focus=(0.0, -0.35, 0.9)),
-           "低角度看點唱機：弧形燈管與頂窗發亮，窗外藍色的天光穿過百葉窗，落在格子地板與鍍鉻飾條上。", kind="hero"),
+    C.Shot("hero", dict(loc=(2.1, -4.0, 1.0), target=(-0.32, 0.1, 0.8), lens=55, fstop=2.8, focus=(0.0, -0.35, 0.85)),
+           "打烊後的冰果室：點唱機是屋裡最亮的東西，燈管與頂窗的彩光灑在格子地板上，窗外只剩一點藍色天光。", kind="hero"),
     C.Shot("card", dict(loc=(1.25, -2.35, 1.3), target=(0.0, 0.0, 0.8), lens=36),
            "三分之四前側視角，點唱機靠在老式冰果室的牆角。", kind="card"),
     C.Shot("s1", dict(loc=(-1.2, -3.0, 1.2), target=(0.05, 0.0, 0.8), lens=33),
            "三分之四前視：木質機身、鍍鉻橫條、菱格網與 U 形燈管。"),
     C.Shot("s2", dict(loc=(1.85, -1.55, 1.0), target=(-0.1, 0.1, 0.82), lens=24),
            "側面：從卡座這一側看過去，窗外的冷光在木頭機身與鍍鉻橫條上勾出輪廓。"),
-    C.Shot("s3", dict(loc=(0.38, -1.0, 1.28), target=(0.0, -0.3, 1.15), lens=50, fstop=2.0, focus=(0.02, -0.36, 1.12)),
-           "頂窗與選曲面板特寫：發光的放射紋與一張張曲目卡。"),
-    C.Shot("s4", dict(loc=(-0.55, -1.1, 0.22), target=(0.0, -0.3, 0.42), lens=40, fstop=2.4, focus=(-0.12, -0.34, 0.35)),
-           "燈管底部特寫：U 形燈管的漸層色、鍍鉻菱格網與底座，格子地板映著暖光。"),
+    C.Shot("s3", dict(loc=(0.55, -0.95, 1.22), target=(0.0, -0.33, 1.07), lens=55, fstop=2.2, focus=(0.1, -0.37, 1.05)),
+           "選曲面板特寫：鍍鉻橫條的反光、一張張曲目卡，上方是放射紋頂窗。", exposure=-1.45),
+    C.Shot("s4", dict(loc=(0.55, -1.15, 0.62), target=(0.0, -0.32, 0.45), lens=45, fstop=2.8, focus=(0.12, -0.34, 0.45)),
+           "菱格網特寫：鍍鉻菱格、後方透光的喇叭布與 U 形燈管的漸層色。", exposure=-1.2),
 ]
 CAPTIONS = {"clay": "白模：與三分之四前視同一鏡頭，只看造型與比例。",
             "wire": "線框：同一鏡頭顯示模型的實際四邊形佈線。"}
 TURN = dict(loc=(0.0, -2.9, 1.05), target=(0.0, 0.0, 0.78), lens=34)
+
+# Turntable only: the room is dark and the cabinet's own glow faces forward, so its back half would spin past as
+# a black silhouette. Two soft fills near the camera are switched on just for the turntable frames.
+_turn_fills = [C.area("turn_fill_L", (-1.5, -3.3, 2.1), (0.0, 0.0, 0.9), 60, C.kelvin(4600), 1.6),
+               C.area("turn_fill_R", (2.2, -2.8, 1.3), (0.0, 0.0, 0.8), 32, C.kelvin(5400), 1.2)]
+for _o in _turn_fills:
+    _o.hide_render = True
+_render_turntable = C.render_turntable
+
+
+def _turntable_with_fill(*a, **k):
+    for o in _turn_fills:
+        o.hide_render = False
+    try:
+        return _render_turntable(*a, **k)
+    finally:
+        for o in _turn_fills:
+            o.hide_render = True
+
+
+C.render_turntable = _turntable_with_fill
 
 C.run(args, "jukebox", model, SHOTS, clay_wire_of="s1", turn=TURN, turn_mode="model", captions_extra=CAPTIONS)
