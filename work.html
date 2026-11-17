@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>作品 — 陳昭銘 CHEN CHAO MING</title>
+<meta name="description" content="陳昭銘 3D 建模作品：完成渲染、白模與線框對照、360° 轉台與可互動的拓撲檢視。">
+<meta name="theme-color" content="#121212">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add('js');setTimeout(function () { document.documentElement.classList.add('ready'); }, 1500);</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<!-- three.js 只在按下「檢查拓撲」時才載入 -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body class="page-work">
+<a class="skip" href="#work">跳到內容</a>
+
+<header id="nav" class="nav">
+  <div class="nav-in">
+    <a class="brand" href="index.html" aria-label="陳昭銘 CHEN CHAO MING，回到首頁"><b>陳昭銘</b><span>CHEN CHAO MING</span></a>
+    <nav id="nav-menu" class="nav-menu" aria-label="主要導覽">
+      <a href="index.html#works" aria-current="page">作品</a>
+      <a href="index.html#gallery">藝廊</a>
+      <a href="index.html#about">關於</a>
+      <a href="index.html#contact">聯絡</a>
+      <a class="btn btn-solid nav-cta" href="index.html#contact">開始委託</a>
+    </nav>
+    <button id="nav-toggle" class="nav-toggle" aria-label="開啟選單" aria-expanded="false" aria-controls="nav-menu"><i></i><i></i></button>
+  </div>
+</header>
+
+<main id="work"></main>
+
+<footer class="footer">
+  <div class="wrap footer-in">
+    <span class="brand brand-sm"><b>陳昭銘</b><span>CHEN CHAO MING</span></span>
+    <span class="muted">© <span id="year">2026</span> 陳昭銘 · 3D 建模作品集</span>
+    <a class="link" href="index.html#contact">開始委託 →</a>
+  </div>
+</footer>
+
+<noscript><p class="nojs">這個作品集需要啟用 JavaScript 才能顯示。聯絡信箱：<a href="mailto:jerry216066@gmail.com">jerry216066@gmail.com</a></p></noscript>
+<script type="module" src="js/work.js"></script>
+</body>
+</html>
